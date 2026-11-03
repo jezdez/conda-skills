@@ -1,0 +1,15 @@
+repos:
+  - repo: builtin
+    hooks:
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: check
+        name: Plugin checks
+        entry: pixi run --locked check
+        language: system
+        pass_filenames: false
+        always_run: true
