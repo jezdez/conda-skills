@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conda-skills"
+version = "0.1.0"
+description = "Link conda-packaged agent skills into client directories"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = ["conda>=26.9", "ruamel.yaml>=0.11.14,<0.20", "rich>=13"]
+
+[project.entry-points.conda]
+conda-skills = "conda_skill.plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff]
+target-version = "py311"
