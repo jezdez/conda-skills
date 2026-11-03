@@ -39,7 +39,7 @@ def configure_parser(parser: ArgumentParser) -> None:
 
 def run(args: Namespace) -> int:
     """Load the CLI on invocation and return its exit status for parsed args."""
-    from .cli import execute
+    from .cli.main import execute
 
     return execute(args)
 

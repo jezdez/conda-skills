@@ -77,5 +77,9 @@ def test_lazy_registration(tmp_path: Path) -> None:
 if __name__ == "__main__":
     # Pytest collection imports implementations; check startup in a fresh process.
     test_installed_discovery()
-    for module in ("conda_skill.cli", "conda_skill.skills", "conda_skill.links"):
-        assert module not in sys.modules, module
+    for module in sys.modules:
+        assert module not in {
+            "conda_skill.cli",
+            "conda_skill.skills",
+            "conda_skill.links",
+        } and not module.startswith("conda_skill.cli."), module

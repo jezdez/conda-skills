@@ -6,14 +6,19 @@
   package is `conda_skill`, and the command is `conda skill`.
 - `src/conda_skill/plugin.py` owns registration and parser configuration for
   `list`, `status`, `install`, and `remove`. Keep registration cheap to import.
-- `cli.py` owns command dispatch, conda error handling, and output.
+- `cli/main.py` owns dispatch, source environment and skill selection,
+  destination scope, and conda error handling. `cli/list.py`, `cli/status.py`,
+  `cli/install.py`, and `cli/remove.py` own command execution and output.
+  `cli/output.py` shares terminal escaping and table rendering.
 - `skills.py` owns the `Skill` model, single-directory loading and validation,
   and discovery through installed conda package records.
 - `links.py` owns backend destinations, link installation and removal, and
   filesystem status. Status includes unmanaged and broken entries; it must not
   require a valid source environment or claim package ownership.
-- Tests mirror these topics: `test_plugin.py`, `test_cli.py`, `test_skills.py`,
-  and `test_links.py`. Shared fixtures belong in `tests/conftest.py`.
+- Tests mirror these topics: `test_plugin.py`, `test_skills.py`, `test_links.py`,
+  and command modules under `tests/cli/`. Cross-command integration tests live in
+  `tests/cli/test_dispatch.py`. Shared fixtures belong in `tests/conftest.py`
+  or `tests/cli/conftest.py` according to scope.
 
 ## Imports and dependencies
 
@@ -23,7 +28,7 @@
   that protect conda startup, or a demonstrated optional-dependency boundary.
   Use `TYPE_CHECKING` for annotation-only imports.
 - Rich is a required dependency. Import its output classes at module scope in
-  `cli.py`; do not use optional imports, fallbacks, or imports inside rendering.
+  CLI modules; do not use optional imports, fallbacks, or imports inside rendering.
 - Keep `__init__.py` free of implementation imports. Loading the plugin and
   configuring its parser must not load CLI, discovery, or link implementations.
 - Prefer stdlib, conda APIs, and existing dependencies. Do not add a framework
@@ -74,7 +79,7 @@
 
 ## Output
 
-- Rich renders human output in `cli.py`: labeled tables, explicit empty states,
+- Rich renders human output in `cli/`: labeled tables, explicit empty states,
   and plain confirmations. Avoid progress displays for short local operations.
 - Treat descriptions, names, and paths as literal text. Render terminal control
   characters visibly and prevent Rich markup interpretation.
@@ -98,14 +103,14 @@
 - Keep installed metadata and real plugin-manager discovery checks. Fresh-process
   lazy-import checks execute `test_plugin.py` as a file outside the checkout;
   in-process checks cannot rely on modules staying unloaded during collection.
-- CLI subprocesses use the shared module-local runner fixture with an isolated
+- CLI subprocesses use the shared runner fixture in `tests/cli/conftest.py` with an isolated
   home and condarc. Remove inherited conda settings and `PYTHONPATH`, and use
   narrow explicit overrides when a test needs them.
 - Cover filesystem conflicts and containment, malformed metadata, human output,
   literal terminal text, and complete JSON documents. Prefer behavioral assertions
   over snapshots of table borders or implementation details.
 - When shared test support files are added, ensure the source distribution
-  includes them. `MANIFEST.in` includes `tests/conftest.py` explicitly.
+  includes them. `MANIFEST.in` includes the shared `conftest.py` files explicitly.
 
 ## Validation and lockfiles
 
