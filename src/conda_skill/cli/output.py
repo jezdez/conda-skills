@@ -7,11 +7,12 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+TERMINAL_CONTROL_PATTERN = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
 
 def escape_terminal_controls(value: object) -> str:
     """Render terminal control characters visibly in human-facing values."""
-    return re.sub(
-        r"[\x00-\x1f\x7f-\x9f]",
+    return TERMINAL_CONTROL_PATTERN.sub(
         lambda match: f"\\x{ord(match[0]):02x}",
         str(value),
     )
