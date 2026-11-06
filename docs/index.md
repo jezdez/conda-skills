@@ -1,78 +1,113 @@
 # conda-skills
 
-`conda skill` connects conda-packaged agent skills to coding agents. It discovers skills in an installed conda environment and creates directory symlinks under `.agents/skills/` or `.claude/skills/`. Companion files remain available through the same link.
+## What is a skill?
 
-Inspired by Pavel Zwerschke's [pixi-skills](https://github.com/pavelzw/pixi-skills) and [skill-forge](https://github.com/pavelzw/skill-forge), conda-skills brings the same approach to conda's Python stack. See {doc}`explanation/prior-art` for the background and shared conventions.
+A skill is a set of instructions for an AI coding agent. It usually lives in a text file called `SKILL.md`, sometimes with examples, reference material, or scripts alongside it. A skill might explain how to work with a particular library or carry out a code review.
 
-This is unreleased development software. Python package versions are derived from Git; the conda recipe's current candidate is `0.1.0`. You need Python 3.11 or newer and conda 26.9 or newer. Install the plugin into the environment that runs conda, then select any existing source environment with `-n` or `-p`. Start with {doc}`how-to/installation` if `conda skill --help` is not available.
+The open [Agent Skills specification](https://agentskills.io/specification) defines the format: a directory with `SKILL.md`, metadata, and instructions.
+
+Your agent reads those instructions to help with a task. Installing a skill does not change the agent's model or install the library it describes unless the package declares that dependency.
+
+Conda-skills lets you get skills through conda packages and make them available to your agent. You choose which instructions to use in each project.
+
+Inspired by Pavel Zwerschke's [pixi-skills](https://github.com/pavelzw/pixi-skills) and [skill-forge](https://github.com/pavelzw/skill-forge), this project brings the same approach to conda's Python stack. See {doc}`explanation/prior-art` for the background.
+
+## Why use conda-skills?
+
+Copying a skill into one project is straightforward. Keeping track of where it came from, which version you use, and how to share that setup takes more work.
+
+Conda manages the skill's package and version. You choose which projects can use it. Several projects can link to the same installed files, and teams can record package versions in a shared environment definition. Updating that package changes the content visible through those links, so review updates before making them available again.
+
+If you already use conda, this keeps skill distribution in your existing tooling. For a single local skill you maintain yourself, copying the files may be enough.
+
+See {doc}`explanation/common-questions` for how this compares with copying files, what gets installed, and whether you need conda-workspaces.
+
+## Start with one skill
+
+The {doc}`tutorials/skill-forge` tutorial walks through one example: instructions for working with the Polars data library. You will:
+
+1. Install the skill package in a separate conda environment.
+2. Read its instructions and decide whether to use them.
+3. Make it available to a project, then remove it again.
+
+You need conda and an agent that supports a skill-directory convention. If `conda skill --help` is not available yet, follow {doc}`how-to/installation` first. No recipe writing or workspace configuration is needed for the tutorial.
+
+```{button-ref} tutorials/skill-forge
+:color: primary
+:shadow:
+
+Try your first skill
+```
+
+Read a skill before using it. Conda-skills checks the package layout, but you decide whether the instructions are appropriate for your work.
+
+## What the commands do
+
+| Command | What it does |
+|---|---|
+| `conda install` or `conda create` | Downloads a package into a conda environment. |
+| `conda skill install` | Creates a directory link so your agent can find an installed skill. |
+
+The link points to the installed files instead of making another copy. `conda skill remove` removes that link and leaves the package alone. Conda-skills does not launch your agent or change its configuration. The tutorial explains how to choose its skill directory.
+
+## Watch first, if you prefer
+
+```{image} ../demos/skill-forge.gif
+:alt: Terminal demo of installing a Polars skill package, reviewing its header, making it available to a project, and removing its link.
+:target: demos/
+```
+
+Prefer written instructions? Every recording on the {doc}`demos` page has a text equivalent.
+
+## After the first tutorial
 
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} Use a skill from skill-forge
-:link: tutorials/skill-forge
+:::{grid-item-card} Write your own instructions
+:link: how-to/create-a-skill
 :link-type: doc
 
-Install a published skill, review its instructions, and make it available to your project.
+Create starter files with `conda skill init`, or use the interactive guide.
 :::
 
-:::{grid-item-card} Keep project skills reproducible
+:::{grid-item-card} Share skills with a team
 :link: how-to/project-skills
 :link-type: doc
 
-Declare skill packages in conda.toml, review the lockfile, and reproduce the environment.
-:::
-
-:::{grid-item-card} Look up commands
-:link: reference/commands
-:link-type: doc
-
-Find command options, defaults, filesystem behavior, and links to JSON schemas.
-:::
-
-:::{grid-item-card} Understand ownership and trust
-:link: explanation/ownership-and-trust
-:link-type: doc
-
-Learn what package records establish and what you must review yourself.
+Keep package versions in a workspace manifest and lockfile when your project needs them.
 :::
 
 ::::
 
-Installing a link does not install a package, launch an agent, or change client configuration. Use conda to manage source packages. Review their instructions and supporting files before exposing them to an agent.
-
-## See it in action
-
-Watch the {doc}`demos` for skill-forge installation, locked project skills, authoring, and broken-link recovery. Each recording has a text equivalent and links to the relevant tutorial or how-to guide.
-
-```{image} ../demos/skill-forge.gif
-:alt: Terminal demo of installing the Polars skill from skill-forge, reviewing its header, linking it to a project, and removing the link.
-:target: demos/
-```
-
-Already have a skill package? Go straight to {doc}`how-to/use-an-installed-skill`. Writing your own? Start with {doc}`how-to/create-a-skill`.
-
-For a complete authoring exercise, {doc}`tutorials/first-skill` builds the supplied example locally. For ongoing maintenance, see {doc}`how-to/update-skills`. The difference between a package, a skill, its library dependencies, and agent discovery is covered in {doc}`explanation/packages-and-discovery`.
+For ongoing use, see {doc}`how-to/update-skills`, {doc}`reference/commands`, or {doc}`how-to/troubleshooting`. The explanations cover {doc}`explanation/agent-discovery` and {doc}`explanation/skill-safety` when you need those details.
 
 ```{toctree}
 :hidden:
-:caption: Tutorials
-
-tutorials/skill-forge
-tutorials/first-skill
-```
-
-```{toctree}
-:hidden:
-:caption: How-to guides
+:caption: Start here
 
 how-to/installation
+tutorials/skill-forge
+demos
+```
+
+```{toctree}
+:hidden:
+:caption: Use and maintain skills
+
 how-to/use-an-installed-skill
-how-to/project-skills
+how-to/troubleshooting
 how-to/update-skills
+how-to/project-skills
+```
+
+```{toctree}
+:hidden:
+:caption: Write and package skills
+
 how-to/create-a-skill
 how-to/package-a-skill
-how-to/troubleshooting
+tutorials/build-a-skill-package
 ```
 
 ```{toctree}
@@ -88,18 +123,24 @@ reference/skill-format
 :hidden:
 :caption: Explanation
 
-explanation/scope
-explanation/ownership-and-trust
-explanation/packages-and-discovery
+explanation/common-questions
+explanation/skill-safety
+explanation/agent-discovery
 explanation/prior-art
 ```
 
 ```{toctree}
 :hidden:
-:caption: Project
+:caption: Contributing
 
 contributing
 releasing
 changelog
-demos
+```
+
+```{toctree}
+:hidden:
+:caption: Proposals
+
+proposals/skill-packages
 ```

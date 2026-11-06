@@ -26,7 +26,7 @@ Use this complete `SKILL.md` as a starting point:
 :language: markdown
 ```
 
-Choose a name matching the directory and write a description of when the skill should be used. See {doc}`../reference/skill-format` for the exact naming, header, ownership, and containment requirements. The plugin does not interpret additional metadata or the instruction body; test the content with each client you intend to support.
+Choose a name matching the directory and write a description of when the skill should be used. See {doc}`../reference/skill-format` for the exact naming, header, ownership, and containment requirements. The plugin does not interpret additional metadata or the instruction body, so test the content with each client you intend to support.
 
 Avoid symlinks to files outside the skill directory, even if those files live elsewhere in the same environment. They fail containment checks. Do not have multiple packages install the same skill name into one environment.
 
@@ -44,7 +44,7 @@ The build script copies the skill to the required prefix-relative path:
 :language: python
 ```
 
-The recipe uses Python as a build dependency to copy files. This example contains only portable Markdown with no runtime dependencies, so it uses `noarch: generic`. If your skill contains platform-specific programs or requires tools at runtime, declare and test those requirements in its recipe; the plugin does not infer them from instructions.
+The recipe uses Python as a build dependency to copy files. This example contains only portable Markdown with no runtime dependencies, so it uses `noarch: generic`. If your skill contains platform-specific programs or requires tools at runtime, declare and test those requirements in its recipe. The plugin does not infer them from instructions.
 
 The example's license path points to the repository license. Use the license that applies to your own content.
 
@@ -59,6 +59,12 @@ The package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. The 
 
 ## Check installed discovery
 
-Install the package into a new disposable prefix using `conda create --prefix <prefix> <artifact>`, then run `conda skill list -p <prefix>` with a conda executable that has the plugin installed. Follow {doc}`../tutorials/first-skill` for the complete POSIX and PowerShell commands.
+Install the package into a new disposable prefix using `conda create --prefix <prefix> <artifact>`, then run `conda skill list -p <prefix>` with a conda executable that has the plugin installed. Follow {doc}`../tutorials/build-a-skill-package` for the complete POSIX and PowerShell commands.
 
-Before distributing the package, test that the plugin can discover and validate the installed skill, then check linking, status, and removal. A successful build alone does not cover these operations. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/ownership-and-trust` for the limits of package ownership.
+Before distributing the package, test that the plugin can discover and validate the installed skill, then check linking, status, and removal. A successful build alone does not cover these operations. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/skill-safety` for the limits of package ownership.
+
+## Pin sources for distribution
+
+Review the entire recipe and every source it uses. Pin immutable source revisions or archive URLs and record their checksums. A checksum for `SKILL.md` alone does not cover companion files or build scripts, and a source archive checksum does not identify the resulting conda package.
+
+Keep recipe changes reviewable in the package repository. Consumer lockfile changes belong in the projects using the package. See {doc}`../explanation/skill-safety` for what each kind of pin guarantees.

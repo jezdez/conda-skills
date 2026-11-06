@@ -1,10 +1,10 @@
-# Watch the commands
+# Demos
 
 These recordings run the real CLI. They use the same VHS theme, dimensions, and terminal font as conda-workspaces' demos. No agent is launched, and no package is published.
 
 ## Install from skill-forge
 
-This recording starts with an installed conda-skills plugin and an empty temporary project. The package transaction is visible: it downloads `agent-skill-polars==0.0.8` from skill-forge, then lists, previews, links, and removes the skill. The recording selects libmamba in its isolated shell; the text below makes that choice explicit.
+The recording starts with the plugin installed and an empty temporary project. It downloads `agent-skill-polars==0.0.8` from skill-forge, previews its instructions, and creates and removes a project link. It uses libmamba in the recording shell, as the command below shows.
 
 ```{image} ../demos/skill-forge.gif
 :alt: Terminal recording of a Polars skill package downloaded from skill-forge, discovered, previewed, linked, and unlinked.
@@ -21,11 +21,11 @@ conda skill status
 conda skill remove polars -p ../skills
 ```
 
-This exact version has no runtime dependencies, so the recording only needs the skill-forge channel. The tutorial also supplies conda-forge for more general package use. The 18-line preview keeps the recording short; inspect the complete instructions and supporting files before linking a skill yourself. Bat is optional: an editor works too. Follow {doc}`tutorials/skill-forge` for prerequisites, review steps, backend selection, and cleanup.
+This version has no runtime dependencies, so the recording only needs the skill-forge channel. The tutorial also includes conda-forge for packages that need it. Only 18 lines are previewed here. Read the complete instructions and supporting files before linking a skill yourself. Bat is optional: an editor works too. Follow {doc}`tutorials/skill-forge` for setup and cleanup.
 
 ## Reproduce project skills
 
-The recording starts with the following manifest already written in a temporary project. Conda-workspaces and conda-skills are installed in the tooling environments; the `skills` environment itself contains only the skill package.
+This manifest is already written in a temporary project. Conda-workspaces and conda-skills are installed in the tooling environments. The `skills` environment contains only the skill package.
 
 ```{literalinclude} ../demos/project-skills.toml
 :language: toml
@@ -45,7 +45,7 @@ conda skill install polars -p .conda/envs/skills
 conda skill status
 ```
 
-The demo uses `CONDA_SOLVER=libmamba` in its temporary shell. Read and review the skill files before the `install` step; this recording focuses on the lock/install workflow rather than repeating the content review. The lock includes Linux, macOS ARM64, and Windows records, but this recording executes only on macOS. See {doc}`how-to/project-skills` for setup, sharing with teammates, and cleanup; see {doc}`how-to/update-skills` for deliberate changes to the locked versions.
+The recording uses `CONDA_SOLVER=libmamba` in its temporary shell and omits the file-review step. Read the skill before linking it yourself. The lock includes Linux, macOS ARM64, and Windows records, but the commands run only on macOS. See {doc}`how-to/project-skills` for setup and sharing, and {doc}`how-to/update-skills` for changes to the locked versions.
 
 ## Recover a broken link
 
@@ -66,17 +66,17 @@ conda skill install review-notes -p ../skills-moved
 conda skill status
 ```
 
-The `mv` is a controlled failure demonstration using a disposable, data-only environment. It is not general advice for moving conda environments, whose executables may embed their original prefix. In a real incident, restore the original source or recreate the environment at its intended path. Use `unlink` only after confirming the exact entry is the stale symlink you intend to remove; never replace it with recursive deletion. See {doc}`how-to/troubleshooting` for recovery options and PowerShell instructions.
+The `mv` deliberately breaks a link to a temporary, data-only environment. Do not use it to relocate a general conda environment: executables may embed their original path. In a real incident, restore the source or recreate the environment at its intended path. Inspect the exact symlink before using `unlink`. Never substitute recursive deletion. See {doc}`how-to/troubleshooting` for recovery options and PowerShell instructions.
 
 ## Use an installed skill
 
-The example package has already been built and installed in a temporary source environment before the recording starts. The visible commands list its skills, show the instructions, make the skill available to the project, inspect the link, and remove it. Removing the link leaves the installed package alone.
+The example package is built and installed in a temporary environment before recording. The commands list and review the skill, create and inspect its project link, then remove the link. The installed package stays in place.
 
 ```{image} ../demos/use-a-skill.gif
 :alt: Terminal recording showing list, source review, install, status, and remove for the review-notes skill.
 ```
 
-Text equivalent, after installing a skill package in `../skills`. The recording configures bat for color and no paging; the flags are explicit here so this works without that setup:
+After installing the package in `../skills`, run the following commands. Bat's flags are included so you do not need the recording's shell configuration:
 
 ```sh
 conda skill list -p ../skills
@@ -86,11 +86,11 @@ conda skill status
 conda skill remove review-notes -p ../skills
 ```
 
-For a guided exercise that includes building the example package, follow {doc}`tutorials/first-skill`. If your package is already installed, use {doc}`how-to/use-an-installed-skill`.
+For a guided exercise that includes building the example package, follow {doc}`tutorials/build-a-skill-package`. If your package is already installed, use {doc}`how-to/use-an-installed-skill`.
 
 ## Create a skill with the guide
 
-The interactive guide collects a name and description, previews the destination, and asks before writing. The result is a starting point for your instructions and recipe. It does not install a package or make the new skill available to an agent. The authoring is still your job; the paperwork is smaller.
+The interactive guide collects a name and description, previews the destination, and asks before writing. The result is a starting point for your instructions and recipe. It does not install a package or make the new skill available to an agent. You still write the instructions, with less setup to do first.
 
 ```{image} ../demos/quickstart.gif
 :alt: Terminal recording of quickstart creating a review-notes skeleton after name, description, project scope, and confirmation prompts.
@@ -108,4 +108,4 @@ Choose `new`, enter `review-notes` and a description, choose `project`, then con
 conda skill init review-notes --description "Summarize the review findings supplied by the user."
 ```
 
-Continue with {doc}`how-to/create-a-skill`. The recordings show macOS terminal behavior; they do not demonstrate Windows symlink permissions. See {doc}`how-to/troubleshooting` for those requirements.
+Continue with {doc}`how-to/create-a-skill`. The recordings show macOS terminal behavior. For Windows symlink permissions, see {doc}`how-to/troubleshooting`.

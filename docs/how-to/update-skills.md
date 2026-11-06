@@ -1,8 +1,10 @@
-# Update, pin, and review skills
+# Update or roll back a skill
+
+If you are getting started, follow {doc}`../tutorials/skill-forge` first. You do not need pins or lockfiles to try a skill.
 
 A skill link points to the installed directory's current contents. Updating its conda package can change the instructions an agent sees without another `conda skill install`. Remove links before changing the source package, then review the new files before making them available again.
 
-This guide assumes `conda skill --help` works and you already have a skill package installed. Examples use skill `polars` from package `agent-skill-polars`, with `0.0.8` as a known version. Use the package name for conda transactions and the skill name for `conda skill` commands. Other packages may contain several skills with different names.
+This guide assumes `conda skill --help` works and you have a skill package installed. Examples use skill `polars` from package `agent-skill-polars`, with `0.0.8` as a known version. Use the package name for conda transactions and the skill name for `conda skill` commands. Other packages may contain several skills with different names.
 
 ## Record the current selection
 
@@ -16,7 +18,7 @@ conda skill status
 
 Record the current package version, build, channel, source directory, and link destinations. Preserve the current `conda.toml` and `conda.lock` together in version control or a separate backup before editing them. If you need a content comparison, save a copy of the installed skill directory outside all client skill directories before replacing it.
 
-For an ordinary named environment, replace `-p .conda/envs/skills` with `-n skill-env`, using your actual environment name. `conda list -n skill-env --explicit` can record the environment's package URLs for recovery; keep exports containing private channel information out of public repositories.
+For an ordinary named environment, replace `-p .conda/envs/skills` with `-n skill-env`, using your actual environment name. `conda list -n skill-env --explicit` can record the environment's package URLs for recovery. Keep exports containing private channel information out of public repositories.
 
 ## Disconnect the old content
 
@@ -29,27 +31,29 @@ conda skill status
 
 Use the same source, backend, and destination scope as for installation. For example, append `--backend claude` for `.claude/skills/`, or `--global` for a home link. Repeat this for all skills in the package and all destinations you use. The plugin cannot enumerate links in other projects.
 
-Remove links before uninstalling the source package, even if you intend to replace it immediately. Removal rediscovers the installed skill to verify the destination; it cannot do that after the source disappears or its metadata becomes invalid.
+Remove links before uninstalling the source package, even if you intend to replace it immediately. Removal rediscovers the installed skill to verify the destination, which it cannot do after the source disappears or its metadata becomes invalid.
 
 ## Update a workspace selection
 
-Edit the dependency in `conda.toml` to the version you have chosen. This example pins the known `0.0.8` release; replace that version with another published version only after assessing the candidate:
+Edit the dependency in `conda.toml` to the version you have chosen. This example pins the known `0.0.8` release. Replace that version with another published version only after assessing the candidate:
 
 ```toml
 [feature.skills.dependencies]
 agent-skill-polars = "==0.0.8"
 ```
 
-Use the libmamba shell setting described in {doc}`project-skills` for this channel, then generate the candidate lockfile:
+Generate the candidate lockfile:
 
 ```sh
 conda workspace lock
 git diff -- conda.toml conda.lock
 ```
 
-The Git command is for projects under version control; otherwise compare with your saved files. `conda workspace lock` runs a fresh solve for all declared environments and platforms, even when the existing lockfile is current. It can change unrelated packages within their constraints. Review the whole diff, not only the skill package entry. A version pin can still allow a different build of that version or changes to its dependencies.
+The Git command is for projects under version control. Otherwise, compare with your saved files.
 
-You do not need an update flag on `lock`. Running it again with an unchanged exact version pin does not request a newer skill version. To update the skill version, change that pin first. A range such as `>=0.0.8,<0.1` permits a fresh solve to select a newer matching version; it is not a commitment to `0.0.8`.
+`conda workspace lock` runs a fresh solve for all declared environments and platforms, even when the existing lockfile is current. It can change unrelated packages within their constraints. Review the whole diff, not only the skill package entry. A version pin can still allow a different build of that version or changes to its dependencies.
+
+`lock` needs no update flag. To request a newer skill version, change the exact version pin before running it again. A range such as `>=0.0.8,<0.1` permits a fresh solve to select a newer matching version and does not pin `0.0.8`.
 
 Once you accept the proposed package selection:
 
@@ -60,7 +64,7 @@ conda skill list -p .conda/envs/skills
 
 The install applies the locked environment on the current platform. Packages outside that locked selection can be removed, so do not use the managed prefix to store ad hoc installations. If `--locked` reports a mismatch, reconcile the manifest and lockfile rather than bypassing the check with `--frozen`.
 
-This separates resolving packages from exposing their instructions. The package selection review happens before installation; the installed-file review below happens before relinking.
+Review the package selection before installation and the installed files before relinking.
 
 ## Update an ordinary conda environment
 
@@ -70,19 +74,19 @@ For a source environment named `skill-env`, first remove its link from the proje
 conda skill remove polars -n skill-env
 ```
 
-Choose one of the following package operations. To request a particular version, including a downgrade to the known `0.0.8` version:
+To request a particular version, including a downgrade to the known `0.0.8` version:
 
 ```sh
-conda install -n skill-env --solver libmamba --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+conda install -n skill-env --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
 ```
 
 To ask conda for a newer version allowed by the environment's constraints:
 
 ```sh
-conda update -n skill-env --solver libmamba --override-channels -c https://prefix.dev/skill-forge -c conda-forge agent-skill-polars
+conda update -n skill-env --override-channels -c https://prefix.dev/skill-forge -c conda-forge agent-skill-polars
 ```
 
-Review conda's transaction plan before accepting it. Updating the package can also change dependencies, and the latest published version may be incompatible with the rest of the environment. Neither command updates a workspace manifest or lockfile; use the workspace workflow for a workspace-managed prefix.
+Review conda's transaction plan before accepting it. Updating the package can also change dependencies, and the latest published version may be incompatible with the rest of the environment. Neither command updates a workspace manifest or lockfile, so use the workspace workflow for a workspace-managed prefix.
 
 An explicit install request selects a version for that transaction. For a persistent pin in an ordinary environment, add this line to its `conda-meta/pinned` file, preserving any existing pins:
 
@@ -90,7 +94,7 @@ An explicit install request selects a version for that transaction. For a persis
 agent-skill-polars ==0.0.8
 ```
 
-Find the environment's actual prefix with `conda env list`. Future conda solves honor this pin unless you change it or explicitly bypass pins. Change the pin when deliberately changing versions. It does not constrain a different environment or make the installed directory immutable.
+Find the environment's actual prefix with `conda env list`. Future conda solves honor this pin unless you change it or explicitly bypass pins. Change it when changing versions. The pin does not constrain a different environment or make the installed directory immutable.
 
 ## Review the replacement and reconnect
 
@@ -110,18 +114,7 @@ conda skill status
 
 For an ordinary environment, use `-n skill-env`. Restore any backend and home-scope options you intentionally used. Reload or restart the client according to its documentation and check its own skill view where available. `linked` is a filesystem result, not evidence that the client loaded the new version.
 
-## Choose the right pin
-
-| Record | What it fixes | What it leaves open |
-| --- | --- | --- |
-| Exact version in `conda.toml` or `conda-meta/pinned` | The allowed version of one package | Builds, dependencies, local file changes, and whether the instructions are appropriate |
-| Version plus build and channel constraints | A narrower package selection | Dependency changes and content review |
-| Reviewed `conda.lock` | Resolved package URLs and hashes for the recorded environments and platforms | Publisher approval, local modifications, client behavior, and future artifact availability |
-| Recipe source URL plus checksum | The source archive a package build is meant to consume | The rest of the recipe, build dependencies, patches, and final package identity |
-
-If you maintain a skill package, review the entire recipe and every source it uses. Pin immutable source revisions or archive URLs and record their checksums. A checksum for `SKILL.md` alone does not cover companion files or build scripts; a source archive checksum does not identify the resulting conda package. Keep the recipe changes and the consumer lockfile changes reviewable in their respective repositories.
-
-The plugin does not check these pins or hashes itself. Conda and conda-workspaces handle package selection and installation; `conda-skills` validates discovery metadata and filesystem containment. None of these records automatically approves instructions for an agent. See {doc}`../explanation/ownership-and-trust`.
+For the distinction between version pins, lockfile hashes, and source checksums, see {doc}`../explanation/skill-safety`. Package authors should also follow {doc}`package-a-skill` when changing recipe sources.
 
 ## Roll back a rejected update
 
@@ -136,6 +129,6 @@ conda skill list -p .conda/envs/skills
 
 Do not run `conda workspace lock` during this rollback: that would produce a new solve instead of restoring the saved selection. The old package artifacts must still be available from their URLs or an appropriate package cache. Restoring the lockfile alone does not restore files in the installed environment.
 
-For an ordinary environment, restore any persistent pin and use `conda install` with the previous version and, where needed, its recorded build and channel. A version-only downgrade may choose different dependencies from the original environment; it is less precise than restoring a complete locked selection.
+For an ordinary environment, restore any persistent pin and use `conda install` with the previous version and, where needed, its recorded build and channel. A version-only downgrade may choose different dependencies from the original environment, making it less precise than restoring a complete locked selection.
 
 Review the restored directory before relinking it. Package rollback cannot undo commands an agent already ran, restore changed project data, or clear instructions cached by a client. Handle those separately. If the update left a broken link and normal removal fails, use the inspection procedure in {doc}`troubleshooting`.

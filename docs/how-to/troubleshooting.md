@@ -1,21 +1,5 @@
 # Troubleshooting
 
-## Skill-forge metadata fails to load
-
-With conda-rattler-solver 26.10.2, channel loading may fail with `Object of type bytes is not JSON serializable` while processing `attestations_sha256`. This happens before conda-skills runs. A verified workaround is to use libmamba for the affected package command:
-
-```sh
-conda create --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
-```
-
-For `conda workspace lock`, which has no solver flag, select libmamba for the current invocation in Bash or zsh:
-
-```sh
-CONDA_SOLVER=libmamba conda workspace lock
-```
-
-In PowerShell, set `$env:CONDA_SOLVER = "libmamba"` for the command and restore its previous value afterward. This workaround changes neither package ownership checks nor signature verification policy. Do not disable plugins or verification to bypass an integrity failure.
-
 ## `conda skill` is not recognized
 
 Check `conda --version` and the environment that provides the executable. The plugin needs conda 26.9 or newer and Python 3.11 or newer, and must be installed in that same environment.
@@ -24,9 +8,9 @@ Follow {doc}`installation`, then run `conda skill --help`. Check whether `CONDA_
 
 ## `conda pypi` is not recognized or an editable install fails
 
-Install `conda-pypi` 0.12 or newer from conda-forge into the environment that runs conda, as shown in {doc}`installation`. Check `conda pypi install --help` for `-n`, `-p`, and `-e`. Older versions had environment-selection bugs; keep the explicit target on both prerequisite and editable-install commands.
+Install `conda-pypi` 0.12 or newer from conda-forge into the environment that runs conda, as shown in {doc}`installation`. Check `conda pypi install --help` for `-n`, `-p`, and `-e`. Older versions had environment-selection bugs. Keep the explicit target on both prerequisite and editable-install commands.
 
-Run `conda pypi install -n base -e .` from the checkout root, substituting the actual conda-owning prefix with `-p` when needed. Editable installs do not resolve runtime dependencies, so install the guide's `rich` and `ruamel.yaml` prerequisites too. A missing public `conda-skills` package is expected before the first release; use the checkout or a local conda artifact meanwhile.
+For a checkout, run `conda pypi install -n base -e .` from its root, substituting the actual conda-owning prefix with `-p` when needed. Editable installs do not resolve runtime dependencies, so install the guide's `rich` and `ruamel.yaml` prerequisites too.
 
 ## `list` finds no skills
 
@@ -99,4 +83,20 @@ Removal leaves source package files and empty `.agents/skills/` or `.claude/skil
 
 ## Output is JSON unexpectedly
 
-The plugin follows conda's configured JSON mode, including `CONDA_JSON=true`. Check that setting and your conda configuration if you expected a table. In scripts, check the command's exit status and parse the entire JSON document; errors use conda's error response rather than the plugin's success shape.
+The plugin follows conda's configured JSON mode, including `CONDA_JSON=true`. Check that setting and your conda configuration if you expected a table. In scripts, check the command's exit status and parse the entire JSON document. Errors use conda's error response rather than the plugin's success shape.
+
+## Skill-forge metadata fails to load
+
+During local testing with conda-rattler-solver 26.10.2, channel loading failed with `Object of type bytes is not JSON serializable` while processing `attestations_sha256`. This happened before conda-skills ran. If you encounter that exact error, retry with libmamba for the affected package command:
+
+```sh
+conda create --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+```
+
+For `conda workspace lock`, which has no solver flag, select libmamba for the current invocation in Bash or zsh:
+
+```sh
+CONDA_SOLVER=libmamba conda workspace lock
+```
+
+In PowerShell, set `$env:CONDA_SOLVER = "libmamba"` for the command and restore its previous value afterward. This workaround changes neither package ownership checks nor signature verification policy. Do not disable plugins or verification to bypass an integrity failure.

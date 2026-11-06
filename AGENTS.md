@@ -3,7 +3,8 @@
 ## Project structure
 
 - The distribution and conda entry-point name are `conda-skills`. The Python
-  package is `conda_skill`, and the command is `conda skill`.
+  package is `conda_skill`, and the canonical command is `conda skill` with the
+  native alias `conda skills`.
 - `src/conda_skill/plugin.py` owns registration. `cli/parser.py` owns lightweight
   per-command parser configuration. Neither loads execution or rendering modules.
 - `cli/main.py` owns dispatch, source environment and skill selection,
@@ -13,11 +14,11 @@
   `cli/output.py` shares terminal escaping and table rendering.
 - `skills.py` owns the frozen installed `Skill` model, shared metadata validation,
   directory loading, and discovery through conda package records.
-  `Skill.create_skeleton()` generates authoring files and returns their path;
-  it does not construct an installed skill. Quickstart keeps pending authoring
+  `Skill.create_skeleton()` generates authoring files and returns their path.
+  It does not construct an installed skill. Quickstart keeps pending authoring
   inputs separate from its frozen `SkillSelection` for an installed skill.
 - `links.py` owns backend destinations, link installation and removal, and
-  filesystem status. Status includes unmanaged and broken entries; it must not
+  filesystem status. Status includes unmanaged and broken entries. It must not
   require a valid source environment or claim package ownership.
 - Tests mirror these topics: `test_plugin.py`, `test_skills.py`, `test_links.py`,
   and command modules under `tests/cli/`. Cross-command integration tests live in
@@ -32,14 +33,14 @@
   that protect conda startup, or a demonstrated optional-dependency boundary.
   Use `TYPE_CHECKING` for annotation-only imports.
 - Rich is a required dependency. Import its output classes at module scope in
-  CLI modules; do not use optional imports, fallbacks, or imports inside rendering.
+  CLI modules. Do not use optional imports, fallbacks, or imports inside rendering.
 - Keep `__init__.py` free of implementation imports. Loading the plugin and
   configuring its parser must not load execution, rendering, discovery, or link
   implementations. Loading the lightweight `cli.parser` is allowed.
 - Prefer stdlib, conda APIs, and existing dependencies. Do not add a framework
   or another parser for behavior an existing library handles.
 - Declare minimum runtime versions in `pyproject.toml`. Provision dependencies
-  through the root `conda.toml`; conda itself comes from a conda channel, not PyPI,
+  through the root `conda.toml`. Conda itself comes from a conda channel, not PyPI,
   so its requirement is declared there and in the conda recipe rather than wheel
   metadata.
 
@@ -48,7 +49,7 @@
 - Apply Ponytail Ultra: choose the smallest complete change and question
   additions that have no current use. Split by responsibility, not line count.
 - Put behavior on an existing model when it owns the data. `Skill.from_directory`
-  loads and validates one candidate; `discover` selects package-owned candidates
+  loads and validates one candidate. `discover` selects package-owned candidates
   and checks duplicate ownership.
 - Prefer frozen dataclasses for related data with its own validation or operations.
   Do not wrap stateless formatting or parser functions in classes.
@@ -67,7 +68,7 @@
   `str | None` and `list[str]`. Support Python 3.11 and newer.
 - Use Ruff for linting and formatting, and ty for source type checking.
 - Pytest-cov measures branches and subprocess execution in the normal test run.
-  Keep combined coverage at or above 95%; exclude generated version metadata only.
+  Keep combined coverage at or above 95%. Exclude generated version metadata only.
   Review uncovered behavior rather than treating the percentage as proof of correctness.
 
 ## Conda integration and safety
@@ -80,18 +81,22 @@
   default, home with `--global`.
 - Home-directory mutations require explicit `--global`. Preserve the existing
   backend paths for `agents` and `claude`.
+- Prefer the cross-client `.agents/skills/` convention over adding agent-specific
+  backends. Batch quickstart selections remain within one explicit source environment,
+  preview every destination, and check conflicts before confirmation. Never remove
+  unselected links. `status --all` inspects existing backends only in the chosen scope.
 - `init` creates an authoring skeleton, not an installed or trusted skill.
   Never overwrite an existing destination, including a dangling symlink. Serialize
   user-provided metadata safely rather than interpolating it into YAML.
 - `quickstart` is a deterministic interactive guide, not an AI agent. Reuse the
   same discovery, skeleton generation, and linking operations as explicit commands.
   Require an interactive terminal and confirmation before writes. Do not install
-  packages implicitly; selecting home in a prompt does not replace `--global`.
+  packages implicitly. Selecting home in a prompt does not replace `--global`.
 - Discover only headers recorded in conda packages. Validate names, frontmatter,
   duplicate ownership, and filesystem containment. Never execute skill content
   or imply that package ownership establishes trustworthiness.
 - Installation reuses a matching link and refuses other destinations.
-  Removal only unlinks a matching destination; it never deletes package files.
+  Removal only unlinks a matching destination and never deletes package files.
 - Preserve redirected-directory and escaping-symlink checks. Keep relative links
   where possible and absolute targets across Windows drives. Do not silently
   fall back to copies when symlink creation fails.
@@ -116,14 +121,14 @@
 - Use plain pytest functions, descriptive names, and parametrized cases. Do not
   group tests in classes or use `unittest.mock`, `Mock`, `MagicMock`, or `patch`.
 - Use pytest fixtures, real temporary package records and files, and small
-  recording closures where needed. Link unit tests construct `Skill` directly;
-  installed CLI tests exercise discovery and linking together.
+  recording closures where needed. Link unit tests construct `Skill` directly.
+  Installed CLI tests exercise discovery and linking together.
 - Use direct hook and parser assertions for registration tests, following
   conda-global and conda-workspaces. Do not embed Python scripts in strings or
   pass inline programs to `python -c` in tests.
 - Keep installed metadata and real plugin-manager discovery checks. Fresh-process
-  lazy-import checks execute `test_plugin.py` as a file outside the checkout;
-  in-process checks cannot rely on modules staying unloaded during collection.
+  lazy-import checks execute `test_plugin.py` as a file outside the checkout.
+  In-process checks cannot rely on modules staying unloaded during collection.
 - CLI subprocesses use the shared runner fixture in `tests/cli/conftest.py` with an isolated
   home and condarc. Remove inherited conda settings and `PYTHONPATH`, and use
   narrow explicit overrides when a test needs them.
@@ -135,8 +140,8 @@
   its shared `conftest.py` files. Keep build output out of the source distribution.
 - Artifact checks execute `scripts/smoke_plugin.py` outside the checkout. The wheel
   check uses a disposable environment and verifies that imports come from it.
-- Exercise generated skill recipes through an actual build and installed discovery;
-  checking that template files exist is not sufficient validation.
+- Exercise generated skill recipes through an actual build and installed discovery.
+  Checking that template files exist is not sufficient validation.
 
 ## Validation and lockfiles
 
@@ -166,15 +171,15 @@ conda task run -e build build
 ```
 
 - `--locked` belongs to workspace installation, not task execution. Tasks only run
-  named manifest tasks; use `conda workspace run -e ENV -- COMMAND` for arbitrary
+  named manifest tasks. Use `conda workspace run -e ENV -- COMMAND` for arbitrary
   commands in an installed environment.
 - Run `conda workspace lock` after dependency or workspace metadata changes and
   keep the generated `conda.lock` with those changes. Do not hand-edit the lockfile.
-- Keep runtime dependencies shared; put lint tools in `dev`, pytest and coverage
+- Keep runtime dependencies shared. Put lint tools in `dev`, pytest and coverage
   in `test`, and documentation and artifact tools in their own features. Test and
   build environments also need the backend dependencies for editable installation.
 - Report checks actually run. Locked Linux, macOS ARM64, and Windows environments
-  do not establish native-platform test coverage; report native runs separately.
+  do not establish native-platform test coverage. Report native runs separately.
 - Do not claim CI, publication, or agent-client discovery from local test results.
 
 ## Documentation and collaboration
@@ -184,12 +189,12 @@ conda task run -e build build
 - Maintain the Sphinx/MyST site under `docs/` with `conda-sphinx-theme` and
   `sphinx-design`. Organize tutorials, how-to guides, reference, and explanations
   around reader needs. Strict docs builds treat warnings as errors.
-- Keep prose factual and concise. Execute tutorial examples; a successful HTML
+- Keep prose factual and concise. Execute tutorial examples. A successful HTML
   build does not prove commands work. Keep unreleased installation paths explicit.
 - User installation docs use conda or conda-pypi in the environment owning conda.
   Reserve conda-workspaces commands for contributor workflows and package-build
   tooling.
-- Use conda-workspaces for development tooling; do not add solver, task, or
+- Use conda-workspaces for development tooling. Do not add solver, task, or
   workspace-manifest implementations to this plugin.
 - Build with Hatchling and hatch-vcs. Derive the Python version from Git and never
   edit the generated `src/conda_skill/_version.py`. The `0.1.0` fallback is for
@@ -197,8 +202,8 @@ conda task run -e build build
 - Keep `recipe/recipe.yaml`'s candidate version equal to the intended release tag.
   Its build-local `SETUPTOOLS_SCM_PRETEND_VERSION` supplies that version when
   building copied source without Git. Release checks compare the tag with the
-  resolved Python version and recipe candidate; do not override their version.
-  Follow `RELEASING.md`; version checks do not authorize tagging or publishing.
+  resolved Python version and recipe candidate. Do not override their version.
+  Follow `RELEASING.md`. Version checks do not authorize tagging or publishing.
 - Pull requests run native tests and artifact/docs checks. Stable annotated tags
   on main trigger coordinated PyPI and jezdez/main publication. Release conda
   packages come from the digest-verified published source archive, not a rebuild

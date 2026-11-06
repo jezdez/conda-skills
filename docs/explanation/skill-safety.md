@@ -1,12 +1,12 @@
-# Package ownership and trust
+# Skill safety
 
-Package ownership identifies the installed conda package that recorded a skill header. You still need to assess the publisher and instructions yourself; ownership does not establish safety or guarantee that an agent will follow the instructions correctly.
+Package ownership identifies the installed conda package that recorded a skill header. You still need to assess the publisher and instructions yourself. Ownership does not establish safety or guarantee that an agent will follow the instructions correctly.
 
-## What discovery establishes
+## Package and file checks
 
 The plugin reads conda package records in the selected environment and looks for `share/agent-skills/<name>/SKILL.md` in each package's file list. It ignores untracked directories, even if their headers are valid. A pip-only installation does not create the conda ownership record needed for discovery.
 
-For each candidate, the plugin validates the directory name, YAML name and description, and filesystem containment. Duplicate ownership of a skill name in the same environment is an error. See {doc}`../how-to/package-a-skill` for the exact requirements.
+For each candidate, the plugin validates the directory name, YAML name and description, and filesystem containment. Duplicate ownership of a skill name in the same environment is an error. See {doc}`../reference/skill-format` for the exact requirements.
 
 The resulting `package` and `version` fields describe the installed package record. The plugin does not verify cryptographic signatures or file hashes, authenticate the publisher, audit supporting scripts, or prove that current files still match their original archive. Companion files are checked for containment, not individually attributed to packages.
 
@@ -18,9 +18,9 @@ Review the instructions and supporting files before linking. Apply your normal p
 
 Containment checks prevent a skill directory from redirecting to files outside the permitted filesystem boundaries at discovery time. They do not sandbox later agent actions or protect against concurrent modifications of the source files.
 
-## What status establishes
+## What status checks
 
-Status checks the destination filesystem without requiring a source environment. A symlink to a directory containing `SKILL.md` is `linked`; it need not have been created by this plugin or point into a conda environment. Status does not read the header to validate it.
+Status checks the destination filesystem without requiring a source environment. A symlink to a directory containing `SKILL.md` is `linked`, even if it was not created by this plugin or does not point into a conda environment. Status does not read the header to validate it.
 
 You can therefore inspect links after deleting a source environment, even though discovery is no longer possible. The status table does not establish trust or package ownership.
 
@@ -29,3 +29,14 @@ You can therefore inspect links after deleting a source environment, even though
 The plugin has no persistent record of links it created. To remove a link safely, it rediscovers the selected source skill and checks that the destination symlink resolves to that same source. It can remove a matching link created by another tool, but refuses unrelated entries.
 
 Remove links before uninstalling the source package or deleting its environment. If the source is already gone, automatic removal cannot verify that the link matches it. Inspect the destination and remove the stale symlink manually as described in {doc}`../how-to/troubleshooting`.
+
+## Pins and hashes
+
+| Record | What it fixes | What it leaves open |
+| --- | --- | --- |
+| Exact version in `conda.toml` or `conda-meta/pinned` | The allowed version of one package | Builds, dependencies, local file changes, and whether the instructions are appropriate |
+| Version plus build and channel constraints | A narrower package selection | Dependency changes and content review |
+| Reviewed `conda.lock` | Resolved package URLs and hashes for the recorded environments and platforms | Publisher approval, local modifications, client behavior, and future artifact availability |
+| Recipe source URL plus checksum | The source archive a package build is meant to consume | The rest of the recipe, build dependencies, patches, and final package identity |
+
+Conda and conda-workspaces apply these records during package selection and installation. Conda-skills does not check them itself, and none automatically approves instructions for an agent. Use {doc}`../how-to/update-skills` to change installed versions and {doc}`../how-to/package-a-skill` to pin a package's source.

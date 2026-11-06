@@ -2,6 +2,8 @@
 
 Run `conda skill` with a subcommand. The installed distribution and plugin entry point are named `conda-skills`. Use `conda skill --help` or `conda skill <command> --help` for help with arguments.
 
+`conda skills` is a native alias for `conda skill`. Both accept the same commands and options. Examples use the singular spelling.
+
 ## Options by command
 
 | Option | `list` | `status` | `install` | `remove` | `init` | `quickstart` |
@@ -17,13 +19,13 @@ Run `conda skill` with a subcommand. The installed distribution and plugin entry
 | `-q`, `--quiet` | Yes | Yes | Yes | Yes | Yes | Yes |
 | `-h`, `--help` | Yes | Yes | Yes | Yes | Yes | Yes |
 
-Put these options after the subcommand. `-n` and `-p` are mutually exclusive. Without either, conda chooses its default target environment, normally the active environment or base if none is active. A missing source environment is an error; lookup does not create it.
+Put these options after the subcommand. `-n` and `-p` are mutually exclusive. Without either, conda chooses its default target environment, normally the active environment or base if none is active. A missing source environment is an error. Lookup does not create it.
 
-The default backend is `agents`. The default destination root is the current working directory, not a discovered Git or workspace root. `--global` selects the home directory. See {doc}`../explanation/scope` for destination paths and examples.
+The default backend is `agents`. The default destination root is the current working directory, not a discovered Git or workspace root. `--global` selects the home directory. See {doc}`../explanation/agent-discovery` for destination paths and examples.
 
 Commands honor conda's JSON setting, including `CONDA_JSON=true`, as well as explicit `--json`. The interactive `quickstart` command rejects JSON before prompting. See {doc}`json` for result fields and error handling. Human output uses tables or plain confirmations, displays terminal control characters visibly, and treats skill text literally.
 
-Conda's shared output helper also provides `--console`, `--verbose` (repeatable), and `--quiet`. These control conda's console and logging configuration. The plugin chooses its result format using conda's JSON setting; use `--json` for its structured results. Verbosity and quiet mode do not replace the command's result with a different schema.
+Conda's shared output helper also provides `--console`, `--verbose` (repeatable), and `--quiet`. These control conda's console and logging configuration. The plugin chooses its result format using conda's JSON setting. Use `--json` for its structured results. Verbosity and quiet mode do not replace the command's result with a different schema.
 
 ## `list`
 
@@ -31,17 +33,19 @@ Conda's shared output helper also provides `--console`, `--verbose` (repeatable)
 conda skill list [-n NAME | -p PREFIX] [--json]
 ```
 
-Find and validate package-owned skill headers in the selected source environment, returning skills sorted by name. Project links are not inspected. Human output has Name, Package, Version, Description, and Path columns; an empty result says `No package-owned skills found.`
+Find and validate package-owned skill headers in the selected source environment, returning skills sorted by name. Project links are not inspected. Human output has Name, Package, Version, Description, and Path columns. An empty result says `No package-owned skills found.`
 
-Malformed candidates and duplicate ownership cause discovery to fail; it does not return a partial list. Untracked directories are ignored. See {doc}`../how-to/package-a-skill` for validation rules.
+Malformed candidates and duplicate ownership cause discovery to fail without returning a partial list. Untracked directories are ignored. See {doc}`skill-format` for validation rules.
 
 ## `status`
 
 ```text
-conda skill status [--backend {agents,claude}] [--global] [--json]
+conda skill status [--backend {agents,claude} | --all] [--global] [--json]
 ```
 
-Inspect the selected destination directory without resolving a source environment or checking package ownership. Entries are sorted by name. Human output has Name, State, Path, and Target columns; an empty or absent destination says `No skill entries found.`
+Inspect the selected destination directory without resolving a source environment or checking package ownership. Entries are sorted by name. Human output has Name, State, Path, and Target columns. An empty or absent destination says `No skill entries found.`
+
+`--all` inspects both existing backend directories (`agents`, then `claude`) in the selected scope and adds a Backend column. It cannot be combined with `--backend`. Use `--all --global` for both home directories. It does not scan other environments or infer which agent has loaded a skill.
 
 | State | Meaning |
 | --- | --- |
@@ -49,7 +53,7 @@ Inspect the selected destination directory without resolving a source environmen
 | `broken` | A symlink does not meet the `linked` condition: for example, the target is missing, is a file, or lacks `SKILL.md`. |
 | `unmanaged` | The destination entry is not a symlink. |
 
-Status does not parse frontmatter or validate the contents of a linked directory. A link made by another tool can appear as `linked`; a regular directory is `unmanaged` even if it contains a valid skill.
+Status does not parse frontmatter or validate the contents of a linked directory. A link made by another tool can appear as `linked`. A regular directory is `unmanaged` even if it contains a valid skill.
 
 ## `install`
 
@@ -85,9 +89,11 @@ Create `NAME/SKILL.md`, `NAME/build.py`, and `NAME/recipe/recipe.yaml` under the
 
 Names follow the same rules as installed skills: at most 64 lowercase ASCII letters, digits, and single separating hyphens. The description must contain non-whitespace text and be at most 1024 characters. Without `--description`, the header contains an authoring placeholder. User text is serialized as YAML data, including quotes, newlines, and control characters.
 
-Any existing destination is a conflict, including an empty directory or a dangling symlink. There is no overwrite option. Filesystem failures can leave a partial skeleton; inspect it before removing it or retrying.
+Any existing destination is a conflict, including an empty directory or a dangling symlink. There is no overwrite option. Filesystem failures can leave a partial skeleton. Inspect it before removing it or retrying.
 
-The generated recipe builds a `noarch: generic` package named `agent-skill-NAME`, version `0.1.0`, build `0`. It uses Python 3.11 or newer to copy `SKILL.md` into `share/agent-skills/NAME/`. The generated `build.py` does not package companion files until you add them. No license is assigned. Review the recipe and replace the placeholder instructions before distribution. The command does not build, install, or link the skeleton. See {doc}`../how-to/create-a-skill` for the authoring steps.
+The generated recipe builds a `noarch: generic` package named `agent-skill-NAME`, version `0.1.0`, build `0`. It uses Python 3.11 or newer to copy `SKILL.md` into `share/agent-skills/NAME/`. The generated `build.py` does not package companion files until you add them. No license is assigned.
+
+Review the recipe and replace the placeholder instructions before distribution. The command does not build, install, or link the skeleton. See {doc}`../how-to/create-a-skill` for the authoring steps.
 
 JSON output is one object with `name`, the absolute directory `path`, and the absolute `recipe` path. Human output identifies the files and gives the next build command.
 
@@ -97,13 +103,17 @@ JSON output is one object with `name`, the absolute directory `path`, and the ab
 conda skill quickstart [-n NAME | -p PREFIX] [--global]
 ```
 
-Run an interactive guide to create a skeleton or link an installed skill. Both stdin and stdout must be terminals. Redirected input or output fails before prompting, with guidance to use `init`, `list`, or `install`. JSON mode is rejected, including when enabled through conda configuration or `CONDA_JSON=true`.
+Run an interactive guide to create a skeleton or link installed skills. Both stdin and stdout must be terminals. Redirected input or output fails before prompting, with guidance to use `init`, `list`, or `install`. JSON mode is rejected, including when enabled through conda configuration or `CONDA_JSON=true`.
 
 Choose `new` to enter a name and description, select a destination scope, and preview the new directory. Confirmation invokes the same skeleton generator as `init`. This branch does not look up a source environment.
 
-Choose `link` to discover package-owned skills in the environment selected by `-n`, `-p`, or conda's default. Select a skill by its displayed number, review its source path and description, and choose the `agents` or `claude` backend. Review the skill's instructions and supporting files before confirming; package ownership does not establish trust. The guide previews the link destination and calls the same linking operation as `install` after confirmation.
+Choose `link` to discover package-owned skills in the environment selected by `-n`, `-p`, or conda's default. Select one or more displayed numbers separated by spaces or commas, or enter `all`. Nothing is selected by default, and `cancel` exits without writes. Repeated numbers are treated as one selection. Review every selected source path and description, then choose the `agents` or `claude` backend.
 
-The scope prompt offers `project` and `home`. Choosing `home` without starting the command with `--global` fails without writes. The same guard applies when the current project directory is the home directory. With `--global`, the scope prompt still lets you choose the project. Confirmation defaults to no. Choosing `cancel` at the first prompt, declining confirmation, or interrupting input before confirmation makes no changes.
+Review every selected skill's instructions and supporting files before confirming. Package ownership does not establish trust. The guide previews every destination and checks the whole selection for conflicts before confirmation. It then calls the same linking operation as `install` for each skill. Existing matching links are reused, and unselected links are left alone. This is not a transaction: filesystem changes or failures during installation can leave earlier links in place.
+
+The scope prompt offers `project` and `home`. Choosing `home` without starting the command with `--global` fails without writes. The same guard applies when the current project directory is the home directory. With `--global`, the scope prompt still lets you choose the project.
+
+Confirmation defaults to no. Choosing `cancel` at the first prompt, declining confirmation, or interrupting input before confirmation makes no changes.
 
 The guide follows fixed prompts without AI. It does not execute skill content, download packages, or create conda environments. Conda's automatic yes setting does not replace confirmation.
 

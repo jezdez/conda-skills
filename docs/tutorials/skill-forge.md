@@ -1,14 +1,16 @@
-# Use a skill from skill-forge
+# Try your first skill
 
-Install a published skill, review its instructions, and make it available to a project. This tutorial uses the Polars skill from Pavel Zwerschke's [skill-forge channel](https://prefix.dev/channels/skill-forge). You do not need to write a recipe or build a package.
+Try a skill containing instructions for Polars, a Python data library. You will download it, review the instructions, connect it to a project, and remove the link. You do not need Polars installed to practice these steps.
 
-Skill-forge distributes conda packages. Conda-skills connects their installed files to your agent's skill directory. You do not need Pixi or pixi-skills to follow this tutorial; see {doc}`../explanation/prior-art` for how the projects relate.
+The skill comes from Pavel Zwerschke's [skill-forge channel](https://prefix.dev/channels/skill-forge). A channel is a place conda downloads packages from. You will use conda to get the files and conda-skills to connect them to your project.
 
 ## Before you start
 
-You need conda 26.9 or newer with conda-skills installed in the environment that runs conda. Check `conda skill --help`; follow {doc}`../how-to/installation` if it is unavailable. The plugin itself is still unreleased, so use the documented checkout or local-artifact installation until a release is available.
+Run `conda skill --help`. If the command is unavailable, follow {doc}`../how-to/installation` before continuing. You also need network access to download the example.
 
-The package download needs network access. On Windows, symlink creation needs Developer Mode or appropriate privileges. Use a new, empty tutorial directory containing a `project` subdirectory, and open your terminal in `project`. The source environment will be created next to it, keeping both apart from your existing projects.
+On Windows, directory links require Developer Mode or appropriate privileges. Check your organization's policy before enabling them.
+
+Create a new, empty folder named `skill-forge-tutorial` using your file manager. Inside it, create `project` and open your terminal there. Conda will create a separate `skills` folder next to it:
 
 ```text
 skill-forge-tutorial/
@@ -16,17 +18,15 @@ skill-forge-tutorial/
   skills/        # created by conda below
 ```
 
-## Install the skill package
+## 1. Get the skill
 
 Run this single-line command in Bash, zsh, or PowerShell:
 
 ```sh
-conda create --yes --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+conda create --yes --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
 ```
 
-The example pins a version verified with conda-skills. It installs the skill package, not the Polars Python library. This version has no runtime package dependencies. Other skill packages may have dependencies; read conda's package plan before accepting unfamiliar packages.
-
-The explicit solver avoids an issue observed with conda-rattler-solver 26.10.2 reading this channel's attestation metadata. It does not change your configured solver. See {doc}`../how-to/troubleshooting` if channel loading fails.
+This downloads version `0.0.8` of the skill package into `../skills`. That folder is a conda environment: a place to keep installed packages separate from your project. This particular package contains instructions, not the Polars library.
 
 List the installed skill:
 
@@ -34,17 +34,22 @@ List the installed skill:
 conda skill list -p ../skills
 ```
 
-Look for skill name `polars`, package `agent-skill-polars`, and version `0.0.8`. The package name and skill name are different: use the former with conda's package commands, the latter with `conda skill install`.
+You should see skill `polars` from package `agent-skill-polars`, version `0.0.8`. From now on, use the shorter skill name, `polars`, with the `conda skill` commands.
 
-## Review the instructions
+## 2. Read it before using it
 
-Open `../skills/share/agent-skills/polars/SKILL.md` in your editor. Read the complete file and inspect its supporting files, not just its description. This skill includes advice and examples for working with Polars; its suggestions may assume tools or workflows different from yours.
+Open `../skills/share/agent-skills/polars/SKILL.md` in your editor. This is the text your agent will read. Read the whole file and inspect any supporting files. Its advice and examples may assume tools or workflows different from yours.
 
-The package being available on a channel does not mean you should automatically trust its instructions. Decide whether they fit your project and your agent's permissions. Conda-skills validates metadata and containment; it does not assess the advice.
+Only continue if the instructions fit your project and your agent's permissions. Being available on a package channel is not a reason to trust them automatically.
 
-## Make the skill available
+## 3. Connect it to the project
 
-After reviewing it, run from `project`:
+After reviewing it, run from `project`. Choose the directory convention supported by your agent:
+
+::::{tab-set}
+
+:::{tab-item} Agents directory
+:sync: backend-agents
 
 ```sh
 conda skill install polars -p ../skills
@@ -53,11 +58,32 @@ conda skill status
 
 You should see a link at `.agents/skills/polars` and a status row marked `linked`. Open `.agents/skills/polars/SKILL.md`: it refers to the installed file in `../skills`, without making a second copy.
 
-For Claude's directory convention, use `--backend claude` on both commands. The plugin does not start an agent or modify its configuration. Check that your client reads the chosen directory; `linked` reports a valid filesystem link, not confirmation from the agent.
+:::
 
-The optional interactive route is `conda skill quickstart -p ../skills`: choose `link`, select `polars`, choose your backend and project scope, and confirm. It uses the same discovery and linking operations and does not install the package for you.
+:::{tab-item} Claude directory
+:sync: backend-claude
 
-## Remove the link and clean up
+```sh
+conda skill install polars -p ../skills --backend claude
+conda skill status --backend claude
+```
+
+You should see a link at `.claude/skills/polars` and a status row marked `linked`. Open `.claude/skills/polars/SKILL.md`: it refers to the installed file in `../skills`, without making a second copy.
+
+:::
+
+::::
+
+Open the project in your agent and follow its instructions for loading skills. Conda-skills does not launch the agent or change its settings, and `linked` does not confirm that the agent has read the files. If you are only trying the commands, you can stop at this filesystem check.
+
+## 4. Disconnect it
+
+Use the same directory choice as above:
+
+::::{tab-set}
+
+:::{tab-item} Agents directory
+:sync: backend-agents
 
 ```sh
 conda skill remove polars -p ../skills
@@ -65,7 +91,24 @@ conda skill status
 conda skill list -p ../skills
 ```
 
-Status should be empty, while the source listing still contains `polars`. Removing a client link does not uninstall its package. If you chose the Claude backend, repeat `--backend claude` for removal and status too.
+:::
+
+:::{tab-item} Claude directory
+:sync: backend-claude
+
+```sh
+conda skill remove polars -p ../skills --backend claude
+conda skill status --backend claude
+conda skill list -p ../skills
+```
+
+:::
+
+::::
+
+Status should be empty, while the source listing still contains `polars`. Removing the link does not uninstall the package. If your agent already loaded the instructions, restart or reload it as its documentation requires.
+
+## Clean up the example
 
 When finished, remove only the tutorial's source environment:
 
@@ -77,9 +120,4 @@ Leave the project directory, then delete the tutorial directory using your file 
 
 ## Next steps
 
-- {doc}`../how-to/project-skills`: declare and lock a project's skills for teammates.
-- {doc}`../how-to/update-skills`: pin, review, update, and restore a skill version.
-- {doc}`../explanation/packages-and-discovery`: understand what gets installed and what your agent sees.
-- {doc}`first-skill`: build your own example package locally.
-
-The {doc}`../demos` page includes a recording of this workflow. Its shortened preview shows only the beginning of `SKILL.md`; read the whole skill before using it yourself.
+When you want to repeat this with another skill, use {doc}`../how-to/use-an-installed-skill`. If you would rather write your own instructions, continue with {doc}`../how-to/create-a-skill`. Version pinning and workspace sharing can wait until you need them.

@@ -2,6 +2,16 @@
 
 This page describes what conda-skills accepts. It does not define every agent's instruction format or establish that a skill is safe to use.
 
+For a proposed shared convention across tools, see {doc}`../proposals/skill-packages`. That draft is not an adopted standard and does not replace this implementation reference.
+
+## Relationship to Agent Skills
+
+The [Agent Skills specification](https://agentskills.io/specification) defines the underlying format: a directory containing `SKILL.md`, YAML frontmatter with `name` and `description`, and Markdown instructions. It also defines optional fields such as `license`, `compatibility`, and `metadata`, and recommends `scripts/`, `references/`, and `assets/` directories for supporting files.
+
+Conda-skills checks required metadata and filesystem containment, but it is not a complete specification validator. It does not validate optional fields or interpret their meaning. In particular, a skill's `allowed-tools` field does not grant permissions through this plugin. The checks below also restrict names to ASCII and reject Windows device names for portability.
+
+The installed path `share/agent-skills/` is a package-distribution convention shared with pixi-skills and skill-forge, not a requirement of the Agent Skills specification. Likewise, `.agents/skills/` and `.claude/skills/` are client discovery conventions. Refer to the specification for authoring rules and your agent's documentation for supported fields and behavior.
+
 ## Installed layout and ownership
 
 Each candidate header must be recorded in an installed conda package at:
@@ -30,4 +40,4 @@ The skill root and header must resolve inside the source environment. Companion 
 | `name` | The directory name, with the rules above. |
 | `description` | A string containing non-whitespace text, at most 1024 characters. |
 
-Other metadata and the instruction body are not interpreted by this plugin. Agents may impose additional requirements. See {doc}`../how-to/package-a-skill` for authoring and build steps, and {doc}`../explanation/ownership-and-trust` for the limits of validation.
+Other metadata and the instruction body are not interpreted by this plugin. Agents may impose additional requirements. See {doc}`../how-to/package-a-skill` for authoring and build steps, and {doc}`../explanation/skill-safety` for the limits of validation.

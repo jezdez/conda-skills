@@ -1,6 +1,6 @@
-# Release preparation
+# Releasing conda-skills
 
-The project is unreleased; no public package is available. Hatchling and hatch-vcs derive Python package versions from Git, and the conda recipe's current candidate is `0.1.0`. The preparation checks do not publish anything.
+Hatchling and hatch-vcs derive Python package versions from Git. The preparation checks do not publish anything.
 
 ## Prepare the candidate
 
@@ -38,15 +38,15 @@ conda task run -e build check-release 0.1.0
 
 Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, expect a development-version mismatch. The task does not create a tag, upload artifacts, or publish a release.
 
-The changelog currently has only an Unreleased section and will fail the final check even if the versions agree. Once a release is authorized and its date selected, add dated candidate notes before tagging. Those notes record the candidate; they do not confirm publication.
+The final check requires dated notes for the requested version. Once a release is authorized and its date selected, add those notes before tagging. They record the candidate without claiming publication.
 
 Review wheel and source distribution artifacts under `dist/` and conda artifacts under `conda-dist/`. `check-dist` validates Python distribution metadata, `test-wheel` checks the installed wheel, and `build-conda` builds and tests the conda recipe. None of these replaces the source test suite or the first-use tutorial workflow.
 
-Run the tutorial's local example build, install, link, status, and removal sequence in disposable state. Review the rendered documentation after the strict build. Record native platform results separately from lockfile support; a macOS or Linux run does not test Windows symlink behavior.
+Run the tutorial's local example build, install, link, status, and removal sequence in disposable state. Review the rendered documentation after the strict build. Record native platform results separately from lockfile support. A macOS or Linux run does not test Windows symlink behavior.
 
 ## One-time publisher setup
 
-The public repository is [jezdez/conda-skills](https://github.com/jezdez/conda-skills). Its `pypi` and `anaconda` environments require approval from `jezdez` and restrict deployments to tags matching `*.*.*`; the workflows further require canonical numeric versions. Self-approval is allowed, following the other personally maintained plugins. Immutable GitHub releases are enabled.
+The public repository is [jezdez/conda-skills](https://github.com/jezdez/conda-skills). Its `pypi` and `anaconda` environments require approval from `jezdez` and restrict deployments to tags matching `*.*.*`. The workflows further require canonical numeric versions. Self-approval is allowed, following the other personally maintained plugins. Immutable GitHub releases are enabled.
 
 Complete or verify these integrations before pushing a release tag:
 
@@ -55,21 +55,21 @@ Complete or verify these integrations before pushing a release tag:
 - Confirm that GitHub Actions has permission to create draft releases. The workflows grant write permissions only to the jobs that need them.
 - Verify that the environment restrictions and immutable-release setting remain enabled. A named environment alone does not provide approval rules.
 
-An administrator must perform these setup steps separately from local validation. Documentation is built by the separate Docs workflow and deployed from `main` to [GitHub Pages](https://jezdez.github.io/conda-skills/); package publication is not required to update the site.
+An administrator must perform these setup steps separately from local validation. The separate Docs workflow builds and deploys documentation from `main` to [GitHub Pages](https://jezdez.github.io/conda-skills/), without requiring a package release.
 
-This public repository is eligible for GitHub artifact attestations. The workflows verify bundles with `gh attestation verify` and never skip signing on failure. Public Sigstore and PyPI attestations disclose signing identities and artifact metadata through public transparency records; they are not private or encrypted evidence.
+This public repository is eligible for GitHub artifact attestations. The workflows verify bundles with `gh attestation verify` and never skip signing on failure. Public Sigstore and PyPI attestations disclose signing identities and artifact metadata through public transparency records. This evidence is neither private nor encrypted.
 
 ## Tag-driven publication
 
-Packages will go to the `jezdez` channel's `main` label on anaconda.org and to PyPI. Neither currently contains conda-skills. The installation guide describes how to use both after release; verify publisher setup and publication separately.
+The publication destinations are the `jezdez` channel's `main` label on anaconda.org and PyPI. Verify publisher setup and successful publication separately.
 
-The process combines [conda-advise's release sequence](https://github.com/jezdez/conda-advise/blob/main/.github/workflows/release.yml) with [conda-sigstore's attestation steps](https://github.com/conda-incubator/conda-sigstore/blob/main/.github/workflows/conda.yml). Push an authorized annotated tag such as `0.1.0` on a commit reachable from `main`. Do not prefix the tag with `v` or use leading zeroes. Review native CI results before tagging. The release workflow reruns Python 3.11/3.14 tests and the strict docs build on Linux; it does not query historical CI runs or repeat the complete platform matrix.
+The process combines [conda-advise's release sequence](https://github.com/jezdez/conda-advise/blob/main/.github/workflows/release.yml) with [conda-sigstore's attestation steps](https://github.com/conda-incubator/conda-sigstore/blob/main/.github/workflows/conda.yml). Push an authorized annotated tag such as `0.1.0` on a commit reachable from `main`. Do not prefix the tag with `v` or use leading zeroes. Review native CI results before tagging. The release workflow reruns Python 3.11/3.14 tests and the strict docs build on Linux. It does not query historical CI runs or repeat the complete platform matrix.
 
-`release.yml` checks the tag, resolved Python version, recipe candidate, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata; a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
+`release.yml` checks the tag, resolved Python version, recipe candidate, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata, and a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
 
-After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256` to select the published source in `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds and tests the noarch package once. Local builds without this variable use the checkout. Signing, verification, and upload all use the same stored conda artifact; there is no independent tag-triggered publisher.
+After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256` to select the published source in `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds and tests the noarch package once. Local builds without this variable use the checkout. Signing, verification, and upload all use the same stored conda artifact. There is no independent tag-triggered publisher.
 
-The conda artifact receives two attestations: SLSA build provenance and a CEP 27 publication statement naming `https://conda.anaconda.org/jezdez`. Before upload, the workflow verifies the publication bundle against the exact package digest, repository, reusable signer workflow, source commit, tag, and GitHub OIDC issuer, then checks the claimed target channel. It retains the verified `.sigstore.json` bundle as a workflow artifact; the bundle is not uploaded to Anaconda.org.
+The conda artifact receives two attestations: SLSA build provenance and a CEP 27 publication statement naming `https://conda.anaconda.org/jezdez`. Before upload, the workflow verifies the publication bundle against the exact package digest, repository, reusable signer workflow, source commit, tag, and GitHub OIDC issuer, then checks the claimed target channel. The verified `.sigstore.json` bundle is retained as a workflow artifact and is not uploaded to Anaconda.org.
 
 The upload job refuses existing or unverifiable Anaconda.org releases and disables uploader configuration and force overrides. It checks the published distribution and channel index against the local artifact, then installs that exact package in a fresh environment and runs the installed-plugin smoke test. Only after conda verification succeeds does the parent workflow publish the GitHub draft.
 
@@ -91,13 +91,13 @@ gh attestation verify conda-skills-VERSION-BUILD.conda \
   --deny-self-hosted-runners --format json
 ```
 
-Inspect the verified statement's `predicate.targetChannel` and require `https://conda.anaconda.org/jezdez`. To verify build provenance, omit `--bundle` and `--predicate-type`; GitHub then retrieves the SLSA attestation for the artifact. Use `release.yml` as the signer workflow for the wheel and source archive. PyPI's provenance endpoint exposes the separate PEP 740 publication evidence for each Python distribution. Retain artifacts and bundles together for verification after workflow artifacts expire.
+Inspect the verified statement's `predicate.targetChannel` and require `https://conda.anaconda.org/jezdez`. To verify build provenance, omit `--bundle` and `--predicate-type` so GitHub retrieves the SLSA attestation for the artifact. Use `release.yml` as the signer workflow for the wheel and source archive. PyPI's provenance endpoint exposes the separate PEP 740 publication evidence for each Python distribution. Retain artifacts and bundles together for verification after workflow artifacts expire.
 
 Publication across services is not atomic. A PyPI success followed by a conda failure leaves a public Python package and a draft GitHub release. Inspect the completed jobs and both indexes before retrying:
 
 - If a build or signing step failed before any upload, correct the failure and use the original release commit and artifacts.
 - If PyPI partially uploaded, compare the existing files and digests before completing it. A generic `skip-existing` setting would not verify their bytes and is deliberately absent.
-- If the conda upload succeeded but verification failed, inspect its filename, build, digest, size, and channel label. The normal uploader refuses an existing release; do not rerun it blindly or add force flags.
+- If the conda upload succeeded but verification failed, inspect its filename, build, digest, size, and channel label. The normal uploader refuses an existing release. Do not rerun it blindly or add force flags.
 - If only GitHub finalization failed, confirm both package publications and their evidence, then finalize the existing draft without rebuilding or re-uploading packages.
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
