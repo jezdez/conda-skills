@@ -27,7 +27,7 @@ See [installation](docs/how-to/installation.md) for PyPI and local-artifact alte
 
 ## Documentation
 
-- [Documentation home](docs/index.md)
+- [Documentation home](https://jezdez.github.io/conda-skills/)
 - [Install conda-skills](docs/how-to/installation.md)
 - [Set up a skill for your agent](docs/tutorials/first-skill.md)
 - [Package a skill](docs/how-to/package-a-skill.md)
@@ -50,7 +50,7 @@ conda workspace install --locked -e docs
 conda task run -e docs docs
 ```
 
-See [Contributing](CONTRIBUTING.md), [Release preparation](RELEASING.md), and the [Changelog](CHANGELOG.md). Documentation builds locally; no public documentation URL is configured.
+See [Contributing](CONTRIBUTING.md), [Release preparation](RELEASING.md), and the [Changelog](CHANGELOG.md). The Docs workflow checks pull requests and deploys documentation from `main` to [GitHub Pages](https://jezdez.github.io/conda-skills/).
 
 ## License and prior art
 

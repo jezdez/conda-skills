@@ -53,7 +53,7 @@ Complete or verify these integrations before pushing a release tag:
 - Confirm that GitHub Actions has permission to create draft releases. The workflows grant write permissions only to the jobs that need them.
 - Verify that the environment restrictions and immutable-release setting remain enabled. A named environment alone does not provide approval rules.
 
-An administrator must perform these setup steps separately from local validation. Documentation hosting remains unconfigured.
+An administrator must perform these setup steps separately from local validation. Documentation is built by the separate Docs workflow and deployed from `main` to [GitHub Pages](https://jezdez.github.io/conda-skills/); package publication is not required to update the site.
 
 This public repository is eligible for GitHub artifact attestations. The workflows verify bundles with `gh attestation verify` and never skip signing on failure. Public Sigstore and PyPI attestations disclose signing identities and artifact metadata through public transparency records; they are not private or encrypted evidence.
 
