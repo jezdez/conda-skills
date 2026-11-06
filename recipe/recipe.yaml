@@ -1,0 +1,45 @@
+schema_version: 1
+
+context:
+  version: "0.1.0"
+
+package:
+  name: conda-skills
+  version: ${{ version }}
+
+source:
+  path: ..
+
+build:
+  number: 0
+  noarch: python
+  script:
+    - python -m pip install . --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python 3.11.*
+    - pip
+    - setuptools >=77.0.3
+  run:
+    - python >=3.11
+    - conda >=26.9
+    - rich >=13
+    - ruamel.yaml >=0.11.14,<0.20
+
+tests:
+  - python:
+      imports:
+        - conda_skill.plugin
+        - conda_skill.cli.main
+      pip_check: true
+  - script:
+      - python scripts/smoke_plugin.py
+    files:
+      source:
+        - scripts/smoke_plugin.py
+
+about:
+  summary: Link conda-packaged agent skills into client directories
+  license: Apache-2.0
+  license_file: LICENSE

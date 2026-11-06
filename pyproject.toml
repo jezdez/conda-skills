@@ -10,7 +10,8 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-dependencies = ["conda>=26.9", "ruamel.yaml>=0.11.14,<0.20", "rich>=13"]
+# Conda is provisioned through conda channels, not PyPI; see pixi.toml and recipe/.
+dependencies = ["ruamel.yaml>=0.11.14,<0.20", "rich>=13"]
 
 [project.entry-points.conda]
 conda-skills = "conda_skill.plugin"
