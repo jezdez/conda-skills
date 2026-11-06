@@ -45,11 +45,12 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             "use conda skill init, list, or install instead"
         )
     console = Console(markup=False, highlight=False)
+    console.print("Skill quickstart", style="bold green")
     console.print(
-        "Start a new skill or link an installed one. "
-        "This guide creates starter files or a link. "
-        "It does not use AI, install packages, or create environments."
+        "Create starter files or link an installed skill.\n"
+        "No AI; this guide does not install packages or create environments."
     )
+    console.print()
     try:
         action = Prompt.ask(
             "Choose an action",
@@ -61,7 +62,9 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             console.print("Cancelled. No changes made.")
             return
         selection: SkillSelection | tuple[str, str]
+        console.print()
         if action == "link":
+            console.print("Installed skills", style="bold")
             skills = load_skills()
             if not skills:
                 console.print(
@@ -76,6 +79,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 console=console,
             )
             selected = skills[int(choice) - 1]
+            console.print()
             console.print(f"Review source: {escape_terminal_controls(selected.path)}")
             console.print(
                 f"Description: {escape_terminal_controls(selected.description)}"
@@ -86,17 +90,21 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 "Review SKILL.md and its supporting files before making them available "
                 "to an agent."
             )
+            console.print()
             backend = Prompt.ask(
                 "Backend", choices=list(BACKENDS), default="agents", console=console
             )
             selection = SkillSelection(selected, backend)
         else:
+            console.print("New skill", style="bold")
             name = Prompt.ask("Skill name", console=console)
             description = Prompt.ask(
                 "Description (when to use this skill)", console=console
             )
             _validate_metadata(name, description)
             selection = (name, description)
+        console.print()
+        console.print("Destination", style="bold")
         console.print(
             "Home-directory changes require starting quickstart with --global."
         )
@@ -110,6 +118,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             raise ValueError(
                 "Use --global explicitly when changing skills in your home directory"
             )
+        console.print()
+        console.print("Review changes", style="bold")
         if isinstance(selection, SkillSelection):
             target = selection.destination(root)
             console.print(f"Link destination: {escape_terminal_controls(target)}")
@@ -117,6 +127,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             name, description = selection
             console.print(f"Create skeleton: {escape_terminal_controls(root / name)}")
             console.print(f"Description: {escape_terminal_controls(description)}")
+        console.print()
         confirmed = Confirm.ask(
             "Proceed with this change?", default=False, console=console
         )
@@ -126,6 +137,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
     if not confirmed:
         console.print("Cancelled. No changes made.")
     elif isinstance(selection, SkillSelection):
+        console.print()
         install(selection.skill, root, selection.backend)
     else:
+        console.print()
         init(*selection, root)

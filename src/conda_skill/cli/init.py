@@ -22,15 +22,16 @@ def execute(name: str, description: str | None, root: Path) -> None:
         console = Console(markup=False, highlight=False)
         console.print(f"Created {escape_terminal_controls(path / 'SKILL.md')}")
         console.print(f"Recipe: {escape_terminal_controls(recipe)}")
+        console.print("\nNext steps", style="bold")
+        console.print("The skeleton is not installed.")
         console.print(
-            "The skeleton is not installed. Replace the placeholder instructions "
-            "and review the description before use."
+            "1. Replace the placeholder instructions and review the description."
         )
         console.print(
-            "Review recipe metadata and choose a license before distribution. "
-            "The generated build.py packages SKILL.md only."
+            "2. Review recipe metadata and choose a license before distribution."
         )
+        console.print("   The generated build.py packages SKILL.md only.")
+        console.print("3. From the new directory, build with:")
         console.print(
-            "From the new directory, build with: "
-            "rattler-build build --recipe recipe/recipe.yaml -c conda-forge"
+            "   rattler-build build --recipe recipe/recipe.yaml -c conda-forge"
         )

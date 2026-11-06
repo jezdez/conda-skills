@@ -1,3 +1,4 @@
+Set Height 800
 Source demos/_settings.tape
 Output demos/quickstart.gif
 
@@ -13,19 +14,22 @@ Show
 Type "conda skill quickstart"
 Enter
 Wait /Choose an action/
+Sleep 1s
 Type "new"
 Enter
 Wait /name/
 Type "review-notes"
 Enter
 Wait /Description/
+Sleep 1s
 Type "Summarize the review findings supplied by the user."
 Enter
 Wait /Scope/
+Sleep 2s
 Enter
 Wait /Proceed/
-Sleep 2s
+Sleep 4s
 Type "y"
 Enter
 Wait /\$/
-Sleep 3s
+Sleep 6s

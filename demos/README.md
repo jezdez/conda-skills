@@ -1,6 +1,6 @@
 # Demo recordings
 
-These terminal recordings use [VHS](https://github.com/charmbracelet/vhs) and the shared visual settings from conda-workspaces: JetBrains Mono, Dark+, and a 1200 by 600 terminal. The commands execute against the current checkout; the recordings are not animated mock output.
+These terminal recordings use [VHS](https://github.com/charmbracelet/vhs) and the shared visual settings from conda-workspaces: JetBrains Mono, Dark+, and a 1200-pixel-wide terminal. Most recordings are 600 pixels tall; quickstart uses 800 pixels to leave room for its prompts and confirmation. The commands execute against the current checkout; the recordings are not animated mock output.
 
 ## Record locally
 

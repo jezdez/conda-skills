@@ -1,3 +1,4 @@
+Set Height 600
 Source demos/_settings.tape
 Output demos/use-a-skill.gif
 

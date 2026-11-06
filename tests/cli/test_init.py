@@ -141,6 +141,9 @@ def test_init_human_output_explains_placeholder_and_next_steps(
     assert "placeholder" in output.lower()
     assert "rattler-build" in output
     assert "not installed" in output.lower()
+    assert "Next steps" in output
+    assert "license" in output
+    assert "build.py packages SKILL.md only" in output
 
 
 def test_init_home_requires_explicit_global(

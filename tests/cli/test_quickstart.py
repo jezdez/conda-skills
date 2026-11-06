@@ -90,6 +90,10 @@ def test_quickstart_new_skill_uses_init_without_source_lookup(
     assert (tmp_path / "new-skill/SKILL.md").is_file()
     assert (tmp_path / "new-skill/recipe/recipe.yaml").is_file()
     assert "not installed" in output.lower()
+    assert output.index("New skill") < output.index("Destination")
+    assert output.index("Destination") < output.index("Review changes")
+    assert output.index("Review changes") < output.index("Next steps")
+    assert "install packages or create environments" in output
     assert not (tmp_path / "missing-env").exists()
     assert not (tmp_path / ".agents").exists()
 
