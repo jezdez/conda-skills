@@ -38,6 +38,7 @@ def main() -> None:
             CONDA_NO_PLUGINS="false",
             CONDA_JSON="false",
             CONDA_PKGS_DIRS=str(directory / "package-cache"),
+            RATTLER_CACHE_DIR=str(directory / "rattler-cache"),
             CONDA_AUTO_UPDATE_CONDA="false",
             CONDA_NOTIFY_OUTDATED_CONDA="false",
         )
