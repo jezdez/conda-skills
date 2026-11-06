@@ -1,6 +1,6 @@
 # JSON output
 
-The non-interactive commands accept `--json`. Conda's configured JSON mode, including `CONDA_JSON=true`, also applies. JSON changes the output format, not discovery, validation, or filesystem behavior. The interactive `quickstart` guide rejects JSON mode before prompting; use the explicit commands in scripts.
+Use `--json` with any non-interactive command, or enable conda's JSON setting, including `CONDA_JSON=true`. Discovery, validation, and filesystem behavior stay the same. The interactive `quickstart` guide rejects JSON mode before prompting; use the explicit commands in scripts.
 
 A successful command writes one complete, unstyled JSON value to stdout. Paths are strings in the operating system's path format. Parse the document with a JSON parser; do not depend on indentation, key order, or escaping style. Empty `list` and `status` results are `[]`.
 
@@ -68,7 +68,7 @@ A broken link still has a target string, even if the target does not exist. A `l
 conda skill install review-notes -p /path/to/source-env --json
 ```
 
-The result is an object with string fields `name` and `path`. The shape is the same whether the command creates a link or reuses an existing matching link.
+The result is an object with string fields `name` and `path`, whether the command creates a link or reuses an existing matching link.
 
 ```json
 {"name": "review-notes", "path": "/path/to/project/.agents/skills/review-notes"}
@@ -92,7 +92,7 @@ The result is an object with string `name` and boolean `removed`. `true` means t
 conda skill init review-notes --description "Review supplied notes" --json
 ```
 
-The result is an object with string fields `name`, `path`, and `recipe`. The path points to the created authoring skeleton; `recipe` is the absolute path to its conda recipe. The skeleton is not yet an installed skill or a client link.
+The result is an object with string fields `name`, `path`, and `recipe`. The path points to the new authoring skeleton; `recipe` is the absolute path to its conda recipe. The skeleton is not yet an installed skill or a client link.
 
 ```json
 {"name": "review-notes", "path": "/path/to/project/review-notes", "recipe": "/path/to/project/review-notes/recipe/recipe.yaml"}
@@ -100,6 +100,6 @@ The result is an object with string fields `name`, `path`, and `recipe`. The pat
 
 ## Errors and literal text
 
-On failure, conda emits its normal error response and the process exits nonzero. The plugin does not define a separate error schema; conda's fields can vary with error type and conda version. Check the exit status before parsing a response as a successful result.
+Check the exit status before parsing a response as a successful result. On failure, the process exits nonzero and conda emits its normal error response. There is no plugin-specific error schema; conda's fields can vary with the error type and conda version.
 
 Descriptions and paths remain literal data. JSON escapes control characters according to JSON syntax; decoded strings may still contain those characters. Escape decoded values appropriately if you later print them to a terminal or insert them into HTML. Human-mode terminal escaping is not applied to JSON data.

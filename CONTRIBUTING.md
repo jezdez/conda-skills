@@ -2,7 +2,7 @@
 
 ## Development environment
 
-Use conda-workspaces from a local checkout. The root `conda.toml` defines the `default`, `py311`, `py314`, `docs`, and `build` environments and their tasks. The generated `conda.lock` records their resolved dependencies. Conda is provisioned from a conda channel, not PyPI.
+Work from a local checkout with conda-workspaces. The root `conda.toml` defines the `default`, `py311`, `py314`, `docs`, and `build` environments and their tasks; `conda.lock` records the resolved dependencies. Install conda from a conda channel, not PyPI.
 
 Bootstrap the tooling, install the locked default environment, and run the full check before changing code:
 
@@ -14,15 +14,15 @@ conda task run -e default check
 
 The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, and ty. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
 
-The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, and prek belong to `dev`; pytest and coverage belong to `test`. The `docs` and `build` environments include only their own tooling and shared runtime dependencies. Hatchling and hatch-vcs are included in both test and build environments because editable installation and release-version tests need them too.
+The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, and prek belong to `dev`; pytest and coverage belong to `test`. The `docs` and `build` environments contain their own tooling and shared runtime dependencies. Both test and build environments need Hatchling and hatch-vcs for editable installation and release-version tests.
 
-For use with your usual conda executable, follow the checkout instructions in `docs/how-to/installation.md`, which use `conda-pypi` and an explicit target environment. The workspace's check and build environments are separate from that installation. Validate installation examples in disposable environments, not a shared base environment.
+To use the plugin with your usual conda executable, follow `docs/how-to/installation.md`. Those checkout instructions use `conda-pypi` with an explicit target environment, separate from the workspace's check and build environments. Validate installation examples in disposable environments, not a shared base environment.
 
 `--locked` belongs to `conda workspace install`, not `conda task run`. Tasks run named commands from the manifest. To run an arbitrary command in an installed environment, use `conda workspace run -e ENV -- COMMAND`.
 
 ## Code changes
 
-Keep registration and parser configuration cheap to import. Domain modules own discovery and filesystem behavior; `cli/` owns argument dispatch, output, and conda error handling. Use relative imports, modern type annotations, and plain pytest functions. Read `AGENTS.md` for the repository's detailed coding and safety rules.
+Keep registration and parser configuration cheap to import. Put discovery and filesystem behavior in domain modules, and argument dispatch, output, and conda error handling in `cli/`. Use relative imports, modern type annotations, and plain pytest functions. Read `AGENTS.md` for the coding and safety rules.
 
 Test changed behavior, particularly filesystem conflicts, containment, malformed package metadata, and JSON output. Tests must leave a contributor's home and existing conda environments untouched. Link operations must preserve existing user files.
 
@@ -52,9 +52,9 @@ conda workspace install --locked -e docs
 conda task run -e docs docs
 ```
 
-The documentation task treats warnings as errors and checks references (`-W -n`). Review the rendered pages under `docs/_build/` for navigation, readable code blocks, and mobile layout. The configuration excludes build output, example sources, and `superpowers` planning directories from page discovery. Example sources remain available through literal includes.
+The documentation task checks references and treats warnings as errors (`-W -n`). Review navigation, code blocks, and mobile layout in the rendered pages under `docs/_build/`. Sphinx excludes build output, example sources, and `superpowers` planning directories from page discovery; pages can still include example sources through literal includes.
 
-Execute affected tutorial commands in disposable state. A successful Sphinx build does not execute shell examples or establish agent-client discovery. The first-use tutorial builds the maintained recipe under `docs/examples/`; report which operating systems and shell variants you actually exercised.
+Run affected tutorial commands in disposable state: Sphinx does not execute shell examples or check whether an agent can discover skills. The first-use tutorial builds the recipe under `docs/examples/`. Report which operating systems and shell variants you exercised.
 
 Install the build environment with `conda workspace install --locked -e build`, then run `conda task run -e build test-example`. This builds that recipe and checks the install, list, link, status, and remove workflow in a temporary environment and project.
 
@@ -73,6 +73,6 @@ Python distributions go to `dist/`; conda artifacts go to `conda-dist/`. Check t
 
 ## Review
 
-Describe the behavior changed, the reason, and the checks actually run. Use one line per paragraph or bullet in pull request and issue bodies. Note untested platforms and any external prerequisites needed to reproduce a problem. A lockfile covering Linux, macOS ARM64, and Windows is not evidence of native test execution on all three.
+Explain what changed and why, and report the checks you ran. Use one line per paragraph or bullet in pull request and issue bodies. Note untested platforms and any external prerequisites needed to reproduce a problem. A lockfile covering Linux, macOS ARM64, and Windows does not show that tests ran natively on all three.
 
 Review AI-assisted contributions with the same care as other changes. You remain responsible for their behavior, claims, licensing, and tests. Keep release notes in `CHANGELOG.md`; do not announce an unreleased change as already published.

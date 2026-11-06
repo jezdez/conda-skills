@@ -1,6 +1,6 @@
 # Command reference
 
-The command is `conda skill`; the installed distribution and plugin entry-point name are `conda-skills`. A subcommand is required. Use `conda skill --help` or `conda skill <command> --help` for parser help.
+Run `conda skill` with a subcommand. The installed distribution and plugin entry point are named `conda-skills`. Use `conda skill --help` or `conda skill <command> --help` for help with arguments.
 
 ## Options by command
 
@@ -21,7 +21,7 @@ Put these options after the subcommand. `-n` and `-p` are mutually exclusive. Wi
 
 The default backend is `agents`. The default destination root is the current working directory, not a discovered Git or workspace root. `--global` selects the home directory. See {doc}`../explanation/scope` for destination paths and examples.
 
-Commands use conda's JSON setting, including `CONDA_JSON=true`, as well as explicit `--json`. The interactive `quickstart` command rejects JSON before prompting. See {doc}`json` for successful result fields and error handling. Human output uses tables or plain confirmations, with terminal control characters made visible and skill text treated literally.
+Commands honor conda's JSON setting, including `CONDA_JSON=true`, as well as explicit `--json`. The interactive `quickstart` command rejects JSON before prompting. See {doc}`json` for result fields and error handling. Human output uses tables or plain confirmations, displays terminal control characters visibly, and treats skill text literally.
 
 Conda's shared output helper also provides `--console`, `--verbose` (repeatable), and `--quiet`. These control conda's console and logging configuration. The plugin chooses its result format using conda's JSON setting; use `--json` for its structured results. Verbosity and quiet mode do not replace the command's result with a different schema.
 
@@ -31,9 +31,9 @@ Conda's shared output helper also provides `--console`, `--verbose` (repeatable)
 conda skill list [-n NAME | -p PREFIX] [--json]
 ```
 
-Discover package-owned skill headers in the selected source environment, validate them, and return skills sorted by name. This does not inspect project links. Human output has Name, Package, Version, Description, and Path columns; an empty result says `No package-owned skills found.`
+Find and validate package-owned skill headers in the selected source environment, returning skills sorted by name. Project links are not inspected. Human output has Name, Package, Version, Description, and Path columns; an empty result says `No package-owned skills found.`
 
-Discovery rejects malformed candidates and duplicate ownership rather than silently returning a partial list. Untracked directories are ignored. See {doc}`../how-to/package-a-skill` for validation rules.
+Malformed candidates and duplicate ownership cause discovery to fail; it does not return a partial list. Untracked directories are ignored. See {doc}`../how-to/package-a-skill` for validation rules.
 
 ## `status`
 
@@ -69,7 +69,7 @@ Targets are relative when source and destination are on the same drive, and abso
 conda skill remove SKILL_NAME [-n NAME | -p PREFIX] [--backend {agents,claude}] [--global] [--json]
 ```
 
-Discover the named skill in the selected source environment, then unlink only a destination symlink that resolves to that source. This checks the target, not which tool originally made the link. Package files are never deleted. Empty parent directories remain.
+Find the named skill in the selected source environment and remove the destination symlink only if it resolves to that source. The tool that originally made the link does not matter. Package files are never deleted, and empty parent directories remain.
 
 An absent destination is a successful no-op, but the source skill must still be discoverable. An unrelated entry or redirected client directory is an error. Human output is `Removed link for SKILL_NAME.` or `No link to remove for SKILL_NAME.`
 
@@ -105,7 +105,7 @@ Choose `link` to discover package-owned skills in the environment selected by `-
 
 The scope prompt offers `project` and `home`. Choosing `home` without starting the command with `--global` fails without writes. The same guard applies when the current project directory is the home directory. With `--global`, the scope prompt still lets you choose the project. Confirmation defaults to no. Choosing `cancel` at the first prompt, declining confirmation, or interrupting input before confirmation makes no changes.
 
-The guide is deterministic and does not use AI, execute skill content, download packages, or create conda environments. It does not use conda's automatic yes setting in place of confirmation.
+The guide follows fixed prompts without AI. It does not execute skill content, download packages, or create conda environments. Conda's automatic yes setting does not replace confirmation.
 
 ## Exit status
 

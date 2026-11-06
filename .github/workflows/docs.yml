@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/docs.yml"
       - "docs/**"
+      - "demos/**"
       - "*.md"
       - "src/**"
       - "pyproject.toml"
@@ -15,6 +16,7 @@ on:
     paths:
       - ".github/workflows/docs.yml"
       - "docs/**"
+      - "demos/**"
       - "*.md"
       - "src/**"
       - "pyproject.toml"

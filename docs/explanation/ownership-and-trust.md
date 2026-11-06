@@ -1,10 +1,10 @@
 # Package ownership and trust
 
-Package ownership tells you which installed conda package recorded a skill header. It does not tell you whether the instructions are safe, the publisher is trustworthy, or an agent will follow them correctly.
+Package ownership identifies the installed conda package that recorded a skill header. You still need to assess the publisher and instructions yourself; ownership does not establish safety or guarantee that an agent will follow the instructions correctly.
 
 ## What discovery establishes
 
-The plugin reads installed conda package records in the selected environment. A candidate must have `share/agent-skills/<name>/SKILL.md` in a package's file list. Untracked directories are ignored, even when their headers are otherwise valid. Packages installed only through pip do not establish this conda ownership record.
+The plugin reads conda package records in the selected environment and looks for `share/agent-skills/<name>/SKILL.md` in each package's file list. It ignores untracked directories, even if their headers are valid. A pip-only installation does not create the conda ownership record needed for discovery.
 
 For each candidate, the plugin validates the directory name, YAML name and description, and filesystem containment. Duplicate ownership of a skill name in the same environment is an error. See {doc}`../how-to/package-a-skill` for the exact requirements.
 
@@ -12,7 +12,7 @@ The resulting `package` and `version` fields describe the installed package reco
 
 ## What linking changes
 
-Installation links the complete skill directory at a path used by agent clients, including any references and scripts supplied with the skill. The plugin does not execute these files, but an agent reading the instructions may later request operations based on them.
+Installation exposes the complete skill directory, including its references and scripts, through a link at a path used by agent clients. The plugin does not execute these files. An agent reading the instructions may later request operations based on them.
 
 Review the instructions and supporting files before linking. Apply your normal package-source policy, inspect changes when updating packages, and use the agent client's own permissions to control what it can read or execute. A source update can change content exposed by an existing link without another `conda skill install` command.
 
@@ -22,7 +22,7 @@ Containment checks prevent a skill directory from redirecting to files outside t
 
 Status checks the destination filesystem without requiring a source environment. A symlink to a directory containing `SKILL.md` is `linked`; it need not have been created by this plugin or point into a conda environment. Status does not read the header to validate it.
 
-You can inspect links even after deleting a source environment, when discovery is no longer possible. The status table does not establish whether skills are trusted or package-owned.
+You can therefore inspect links after deleting a source environment, even though discovery is no longer possible. The status table does not establish trust or package ownership.
 
 ## Why removal requires the source
 

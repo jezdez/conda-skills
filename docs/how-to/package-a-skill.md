@@ -1,6 +1,6 @@
 # Package a skill
 
-The plugin finds skills through installed conda packages that record a header at `share/agent-skills/<name>/SKILL.md`. A package can contain one skill or several, and its conda package name does not have to match a skill name.
+Package each skill with a header at `share/agent-skills/<name>/SKILL.md` so the plugin can find it in conda's installed package records. One package can contain several skills, and its conda package name does not have to match any of their names.
 
 ## Choose the installed layout
 
@@ -20,22 +20,13 @@ The plugin recognizes only this exact header depth and spelling. A file at `shar
 
 ## Write the header and instructions
 
-The supplied example is a complete `SKILL.md`:
+Use this complete `SKILL.md` as a starting point:
 
 ```{literalinclude} ../examples/review-notes/SKILL.md
 :language: markdown
 ```
 
-The plugin requires:
-
-- A directory name of at most 64 characters matching `[a-z0-9]+(?:-[a-z0-9]+)*`: lowercase ASCII letters and digits, with single hyphens between nonempty segments.
-- UTF-8 `SKILL.md` with YAML frontmatter starting on the first line, enclosed by lines containing exactly `---`.
-- A YAML mapping whose `name` equals the directory name.
-- A string `description` with non-whitespace content and at most 1024 characters.
-- A skill root and header that resolve inside the source environment, with companion paths that remain inside the resolved skill root.
-- A single owning package record for each discovered skill name in the selected environment.
-
-The plugin does not interpret additional metadata or the instruction body. These checks do not cover every agent's skill format. Test the content with each client you intend to support.
+Choose a name matching the directory and write a description of when the skill should be used. See {doc}`../reference/skill-format` for the exact naming, header, ownership, and containment requirements. The plugin does not interpret additional metadata or the instruction body; test the content with each client you intend to support.
 
 Avoid symlinks to files outside the skill directory, even if those files live elsewhere in the same environment. They fail containment checks. Do not have multiple packages install the same skill name into one environment.
 
@@ -53,7 +44,9 @@ The build script copies the skill to the required prefix-relative path:
 :language: python
 ```
 
-The recipe's build dependency supplies Python for copying files. `noarch: generic` is suitable because this example contains only portable Markdown and has no runtime dependencies. If your skill contains platform-specific programs or requires tools at runtime, declare and test those requirements in its recipe; the plugin does not infer them from the instructions. This recipe's license path points to the repository license. Use the license that applies to your own content.
+The recipe uses Python as a build dependency to copy files. This example contains only portable Markdown with no runtime dependencies, so it uses `noarch: generic`. If your skill contains platform-specific programs or requires tools at runtime, declare and test those requirements in its recipe; the plugin does not infer them from instructions.
+
+The example's license path points to the repository license. Use the license that applies to your own content.
 
 Set up conda-workspaces as described in {doc}`../contributing`. From the checkout root, install the locked build environment and run rattler-build:
 
@@ -68,4 +61,4 @@ The package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. The 
 
 Install the package into a new disposable prefix using `conda create --prefix <prefix> <artifact>`, then run `conda skill list -p <prefix>` with a conda executable that has the plugin installed. Follow {doc}`../tutorials/first-skill` for the complete POSIX and PowerShell commands.
 
-A successful build does not prove that the plugin can discover and validate the installed skill. Test listing, linking, status, and removal before distributing it. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/ownership-and-trust` for the limits of package ownership.
+Before distributing the package, test that the plugin can discover and validate the installed skill, then check linking, status, and removal. A successful build alone does not cover these operations. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/ownership-and-trust` for the limits of package ownership.

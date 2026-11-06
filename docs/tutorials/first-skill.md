@@ -1,10 +1,12 @@
 # Set up a skill for your agent
 
-Set up a project so your agent can find instructions for organizing code-review findings. You will build a small skill package, install it into a separate conda environment, and create a symlink in a temporary project that points to the packaged skill directory. The example contains instructions, with no executable script. You can follow these steps without an agent client.
+For a short preview, watch {doc}`../demos`. The steps below include the package setup omitted from the recording.
+
+Give your project a skill for organizing code-review findings. You will build a small package, install it in a separate conda environment, and create a symlink to its skill directory in a temporary project. The example contains instructions and no executable script. You do not need an agent client to follow along; it can sit this one out.
 
 ## Before you start
 
-You need this repository checkout and a conda installation in which `conda skill --help` works. Follow {doc}`../how-to/installation` to install the plugin into the environment that runs your usual conda command. Install conda-workspaces for the package-build tooling:
+Start with a checkout of this repository and a conda installation where `conda skill --help` works. If you need to install the plugin, follow {doc}`../how-to/installation` for your usual conda command. Install conda-workspaces for the package-build tooling:
 
 ```sh
 conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
@@ -31,7 +33,7 @@ conda workspace install --locked -e build
 conda task run -e build build-example
 ```
 
-The recipe fixes the example version and build string, so the package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. You will install this local file; these steps do not depend on the example being available on a public channel. The build downloads Python to build the package. The skill itself has no runtime dependencies. See {doc}`../how-to/package-a-skill` for the recipe and installed layout.
+The recipe fixes the version and build string, producing `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. You will install this local file, so you do not need a public channel with the example package. The build downloads Python; the skill itself has no runtime dependencies. See {doc}`../how-to/package-a-skill` for the recipe and installed layout.
 
 ## Create a source environment and project
 
@@ -68,7 +70,7 @@ You do not need to activate the source environment. The `-p` option selects it i
 conda skill list -p ../source-env
 ```
 
-The table shows `review-notes`, package `conda-skills-example`, version `0.1.0`, its description, and its source path under `source-env/share/agent-skills/review-notes`. The plugin finds the skill because conda recorded the package's `SKILL.md` during installation. Copying the same folder into the prefix by hand would not create package ownership.
+Look for `review-notes` from package `conda-skills-example`, version `0.1.0`. The table also shows its description and source path under `source-env/share/agent-skills/review-notes`. The plugin finds it through conda's record of the installed `SKILL.md`; copying the folder into the prefix by hand would not create package ownership.
 
 ## Link and inspect
 
@@ -79,7 +81,7 @@ conda skill install review-notes -p ../source-env
 conda skill status
 ```
 
-The install command reports `Linked review-notes at` followed by the project's absolute `.agents/skills/review-notes` path. Status reports that entry as `linked`. The link points at the complete source directory, so reading `.agents/skills/review-notes/SKILL.md` reads the packaged file.
+You should see `Linked review-notes at` followed by the project's absolute `.agents/skills/review-notes` path, then a status entry marked `linked`. The link points at the complete source directory: reading `.agents/skills/review-notes/SKILL.md` reads the packaged file.
 
 Running the install command again reuses the matching link:
 
@@ -100,7 +102,7 @@ conda skill status
 conda skill list -p ../source-env
 ```
 
-Removal reports `Removed link for review-notes.` Status now says `No skill entries found.` The final list still contains the source skill: removing a link does not uninstall a package.
+You should see `Removed link for review-notes.`, followed by `No skill entries found.` The final list still contains the source skill because removing a link does not uninstall its package.
 
 After unlinking, delete the temporary source environment:
 
@@ -110,4 +112,4 @@ conda remove --yes --prefix ../source-env --all
 
 Leave the temporary project directory before deleting the tutorial directory with your file manager. Only remove the temporary directory created in this tutorial. The built package remains under the checkout's `conda-dist/` and can be reused.
 
-For links in your home directory or the Claude backend, read {doc}`../explanation/scope`. To adapt the example to your own package, continue with {doc}`../how-to/package-a-skill`.
+For links in your home directory or the Claude backend, read {doc}`../explanation/scope`. To start your own skill with `conda skill init`, continue with {doc}`../how-to/create-a-skill`; use {doc}`../how-to/package-a-skill` when you are ready to build it.

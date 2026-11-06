@@ -1,10 +1,10 @@
 # Source environments and destination scope
 
-A `conda skill` operation involves the environment running conda and the plugin, the environment containing packaged skills, and the project or home directory receiving links. All three can be different.
+The conda executable, packaged skills, and agent links can live in separate places. With `conda skill`, you choose a source environment for the skills and a destination for their links independently of the environment that runs conda and the plugin.
 
 ## The environment running conda
 
-Conda discovers plugins from installed Python entry points in its own environment. Installing `conda-skills` into another environment does not change that executable's plugins. Follow {doc}`../how-to/installation` to install the plugin in the environment that runs conda, commonly base.
+Conda loads plugins through the Python entry points installed in its own environment, commonly base. Installing `conda-skills` elsewhere does not register it with that executable. Follow {doc}`../how-to/installation` to install it in the right environment.
 
 Activating a source environment is optional. A base conda installation with the plugin can read skills from a separate prefix without installing Python or the plugin into that prefix.
 
@@ -14,7 +14,7 @@ Activating a source environment is optional. A base conda installation with the 
 
 The selected environment must already exist. The commands do not solve requirements, download packages, scan all environments, or create a missing environment. Use conda's package commands for those operations.
 
-The source prefix supplies the package-owned skill. Removal checks that the destination link points to that source. Selecting the wrong prefix can cause a removal conflict even when both prefixes contain a skill with the same name.
+The source prefix supplies the package-owned skill and the target checked during removal. If you select a different prefix when removing a link, it can cause a conflict even if both prefixes contain a skill with the same name.
 
 ## The destination
 
@@ -41,6 +41,6 @@ Running `install` or `remove` directly from your home directory still requires e
 
 ## Link lifetime
 
-Links expose the current files at their target paths. Updating a source package in the same prefix makes new content available through existing links. Removing or renaming the skill directory can break those links.
+Links expose the current files at their targets. Update a source package in the same prefix and existing links expose the new content too. Removing or renaming the skill directory can break those links.
 
 Relative targets let you move a project and source environment together if you keep their relative layout. Moving them independently can break the links. The plugin uses absolute targets across Windows drives. It has no persistent link database or automatic repair. Use `status` to inspect destinations and {doc}`../how-to/troubleshooting` to recover stale links.

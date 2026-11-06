@@ -2,9 +2,9 @@
 
 ## `conda skill` is not recognized
 
-Check `conda --version` and the environment that provides that executable. The plugin requires conda 26.9 or newer and Python 3.11 or newer, and must be installed into the executable's environment. Installing it into a separate source environment will not register it with base conda.
+Check `conda --version` and the environment that provides the executable. The plugin needs conda 26.9 or newer and Python 3.11 or newer, and must be installed in that same environment.
 
-Follow {doc}`installation`, then run `conda skill --help`. Check whether conda's external plugins are disabled by `CONDA_NO_PLUGINS` or your invocation's `--no-plugins` option. Development environments created with conda-workspaces are separate from your usual conda installation; installing there does not register the plugin with base conda.
+Follow {doc}`installation`, then run `conda skill --help`. Check whether `CONDA_NO_PLUGINS` or your invocation's `--no-plugins` option disables external plugins. Installing the plugin in a skill source environment or a conda-workspaces development environment does not register it with base conda.
 
 ## `conda pypi` is not recognized or an editable install fails
 
@@ -16,7 +16,7 @@ Run `conda pypi install -n base -e .` from the checkout root, substituting the a
 
 Use `conda skill list -p <source-prefix>` to make the source explicit. Check that the intended package was installed in that prefix with `conda list -p <source-prefix>`.
 
-Discovery requires the exact recorded path `share/agent-skills/<name>/SKILL.md`. A manually copied directory or pip-only installation is not enough. Compare your installed layout and recipe with {doc}`package-a-skill`. The `list` command reports source skills, not links in your current project; use `status` for those.
+Conda's package record must contain the exact path `share/agent-skills/<name>/SKILL.md`. A manually copied directory or pip-only installation is not enough. Compare your installed layout and recipe with {doc}`package-a-skill`. To inspect project links instead of source skills, use `status` rather than `list`.
 
 Discovery fails if a package contains malformed frontmatter, two packages claim the same skill, or a skill path escapes its environment. Correct or replace the source package through conda before retrying.
 
@@ -79,7 +79,7 @@ Enable Developer Mode or obtain directory-symlink privileges according to your s
 
 Use the same source prefix, backend, and scope as installation. The source skill must still be package-owned, and the destination must be a symlink to that source. If the link is already absent, removal succeeds without changing anything, provided the plugin can still discover the source skill.
 
-Removal intentionally leaves source package files and empty `.agents/skills/` or `.claude/skills/` directories intact. Use conda to uninstall a package after removing its links.
+Removal leaves source package files and empty `.agents/skills/` or `.claude/skills/` directories intact. To remove the package too, uninstall it with conda after removing its links.
 
 ## Output is JSON unexpectedly
 

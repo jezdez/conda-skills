@@ -2,6 +2,8 @@
 
 `conda skill` connects conda-packaged agent skills to coding agents. It discovers skills in an installed conda environment and creates directory symlinks under `.agents/skills/` or `.claude/skills/`. Companion files remain available through the same link.
 
+Inspired by Pavel Zwerschke's [pixi-skills](https://github.com/pavelzw/pixi-skills) and [skill-forge](https://github.com/pavelzw/skill-forge), conda-skills brings the same approach to conda's Python stack. See {doc}`explanation/prior-art` for the background and shared conventions.
+
 This is unreleased development software. Python package versions are derived from Git; the conda recipe's current candidate is `0.1.0`. You need Python 3.11 or newer and conda 26.9 or newer. Install the plugin into the environment that runs conda, then select any existing source environment with `-n` or `-p`. Start with {doc}`how-to/installation` if `conda skill --help` is not available.
 
 ::::{grid} 1 1 2 2
@@ -39,6 +41,17 @@ Learn what package records establish and what you must review yourself.
 
 Installing a link does not install a package, launch an agent, or change client configuration. Use conda to manage source packages. Review their instructions and supporting files before exposing them to an agent.
 
+## See it in action
+
+Watch the {doc}`demos` to see an installed skill made available to a project and a new skill created with the interactive guide. Each recording has a text equivalent and links to the relevant tutorial or how-to guide.
+
+```{image} ../demos/use-a-skill.gif
+:alt: Terminal demo of reviewing and enabling an installed skill for a project, then removing its link.
+:target: demos/
+```
+
+Already have a skill package? Go straight to {doc}`how-to/use-an-installed-skill`. Writing your own? Start with {doc}`how-to/create-a-skill`.
+
 ```{toctree}
 :hidden:
 :caption: Tutorial
@@ -51,6 +64,7 @@ tutorials/first-skill
 :caption: How-to guides
 
 how-to/installation
+how-to/use-an-installed-skill
 how-to/create-a-skill
 how-to/package-a-skill
 how-to/troubleshooting
@@ -62,6 +76,7 @@ how-to/troubleshooting
 
 reference/commands
 reference/json
+reference/skill-format
 ```
 
 ```{toctree}
@@ -70,6 +85,7 @@ reference/json
 
 explanation/scope
 explanation/ownership-and-trust
+explanation/prior-art
 ```
 
 ```{toctree}
@@ -79,4 +95,5 @@ explanation/ownership-and-trust
 contributing
 releasing
 changelog
+demos
 ```

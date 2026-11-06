@@ -1,16 +1,16 @@
 # Release preparation
 
-The project is unreleased. Python package versions are derived from Git by Hatchling and hatch-vcs; the conda recipe's current candidate is `0.1.0`. No public package is available, and no public documentation URL is configured. The checks below do not publish anything.
+The project is unreleased; no public package is available. Hatchling and hatch-vcs derive Python package versions from Git, and the conda recipe's current candidate is `0.1.0`. The preparation checks do not publish anything.
 
 ## Prepare the candidate
 
-Review the changes and confirm that `CHANGELOG.md` describes them under Unreleased. Set `context.version` in `recipe/recipe.yaml` to the intended bare release tag. On a clean tagged checkout, hatch-vcs derives the Python package version from that tag. Other checkouts can have development versions containing a commit identifier and a dirty-tree date.
+Review the changes and their Unreleased entries in `CHANGELOG.md`. Set `context.version` in `recipe/recipe.yaml` to the intended bare release tag. On a clean tagged checkout, hatch-vcs uses that tag as the Python package version. Other checkouts can have development versions containing a commit identifier and a dirty-tree date.
 
 `pyproject.toml` declares a dynamic version and a `0.1.0` fallback for development builds without usable version metadata. The fallback does not establish a release, and an untagged Git checkout can still resolve to a different development version. Do not edit the generated `src/conda_skill/_version.py` file.
 
 Local conda builds copy the checkout without relying on Git metadata. The recipe sets `SETUPTOOLS_SCM_PRETEND_VERSION` to `context.version` for those development builds. Release builds instead use the exact published PyPI source archive and its recorded SHA-256, without overriding the version stored in that archive. Do not use a version override to bypass the release check.
 
-Confirm that the README and installation guide describe the candidate accurately. Do not replace development installation instructions with a public channel or PyPI command until the corresponding release is actually available. The separately versioned example package under `docs/examples/` is a tutorial fixture, not the plugin distribution.
+Check the candidate details in the README and installation guide. Keep development installation instructions until the corresponding channel or PyPI release is available. The example package under `docs/examples/` has its own version and is a tutorial fixture, not the plugin distribution.
 
 ## Validate
 
@@ -34,9 +34,11 @@ conda task run -e build test-example
 conda task run -e build check-release 0.1.0
 ```
 
-`check-release VERSION` compares the bare version argument against Hatchling's resolved package version and the recipe candidate, and requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.1.0` for the current candidate, not `v0.1.0`. Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, a development-version mismatch is expected. This task does not create a tag, upload artifacts, or publish a release.
+`check-release VERSION` compares the bare version argument with Hatchling's resolved package version and the recipe candidate. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.1.0` for the current candidate, not `v0.1.0`.
 
-The current changelog has only an Unreleased section, so it cannot pass that final check even if the versions agree. Once a release is authorized and its date selected, add the dated candidate notes before tagging. Those notes do not establish that publication succeeded.
+Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, expect a development-version mismatch. The task does not create a tag, upload artifacts, or publish a release.
+
+The changelog currently has only an Unreleased section and will fail the final check even if the versions agree. Once a release is authorized and its date selected, add dated candidate notes before tagging. Those notes record the candidate; they do not confirm publication.
 
 Review wheel and source distribution artifacts under `dist/` and conda artifacts under `conda-dist/`. `check-dist` validates Python distribution metadata, `test-wheel` checks the installed wheel, and `build-conda` builds and tests the conda recipe. None of these replaces the source test suite or the first-use tutorial workflow.
 
@@ -59,17 +61,17 @@ This public repository is eligible for GitHub artifact attestations. The workflo
 
 ## Tag-driven publication
 
-The intended package destinations are the `jezdez` channel's `main` label on anaconda.org and PyPI. Neither currently contains conda-skills. The installation guide documents both routes conditionally; it does not establish that publication is configured or complete.
+Packages will go to the `jezdez` channel's `main` label on anaconda.org and to PyPI. Neither currently contains conda-skills. The installation guide describes how to use both after release; verify publisher setup and publication separately.
 
 The process combines [conda-advise's release sequence](https://github.com/jezdez/conda-advise/blob/main/.github/workflows/release.yml) with [conda-sigstore's attestation steps](https://github.com/conda-incubator/conda-sigstore/blob/main/.github/workflows/conda.yml). Push an authorized annotated tag such as `0.1.0` on a commit reachable from `main`. Do not prefix the tag with `v` or use leading zeroes. Review native CI results before tagging. The release workflow reruns Python 3.11/3.14 tests and the strict docs build on Linux; it does not query historical CI runs or repeat the complete platform matrix.
 
 `release.yml` checks the tag, resolved Python version, recipe candidate, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata; a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
 
-After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256`, which selects the published-source branch of `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds/tests the noarch package once. Local builds without this variable continue to use the checkout. The same stored conda artifact is used for signing, verification, and upload; there is no independent tag-triggered publisher.
+After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256` to select the published source in `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds and tests the noarch package once. Local builds without this variable use the checkout. Signing, verification, and upload all use the same stored conda artifact; there is no independent tag-triggered publisher.
 
 The conda artifact receives two attestations: SLSA build provenance and a CEP 27 publication statement naming `https://conda.anaconda.org/jezdez`. Before upload, the workflow verifies the publication bundle against the exact package digest, repository, reusable signer workflow, source commit, tag, and GitHub OIDC issuer, then checks the claimed target channel. It retains the verified `.sigstore.json` bundle as a workflow artifact; the bundle is not uploaded to Anaconda.org.
 
-The upload job still refuses existing or unverifiable Anaconda.org releases, disables uploader configuration and force overrides, and checks the published distribution and channel index against the local artifact. It then installs that exact package in a fresh environment and runs the installed-plugin smoke test. Only after conda verification succeeds does the parent workflow publish the GitHub draft.
+The upload job refuses existing or unverifiable Anaconda.org releases and disables uploader configuration and force overrides. It checks the published distribution and channel index against the local artifact, then installs that exact package in a fresh environment and runs the installed-plugin smoke test. Only after conda verification succeeds does the parent workflow publish the GitHub draft.
 
 Attestations identify who built or published particular bytes. They do not establish package safety, authorize a signer for a channel, produce an SBOM, or enable automatic verification in users' conda installations.
 
@@ -100,6 +102,6 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
 
-Pushing a tag is a publication action and requires explicit authorization. Merely adding these workflow files does not configure the external publishers. Do not upload artifacts or announce a public release merely because local preparation checks passed.
+Pushing a tag is a publication action and requires explicit authorization. Workflow files alone do not configure the external publishers, and passing local preparation checks does not authorize uploads or release announcements.
 
 Once publication has been authorized and confirmed at the selected destinations, confirm the actual version and date in `CHANGELOG.md`, retain an Unreleased section for later work, and update installation links to the verified locations. Keep validation evidence separate from evidence of publication.
