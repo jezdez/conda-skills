@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,18 +24,30 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class SkillSelection:
-    """An installed skill and the backend chosen for its link."""
+    """Installed skills and the backend chosen for their links."""
 
-    skill: Skill
+    skills: tuple[Skill, ...]
     backend: str
 
-    def destination(self, root: Path) -> Path:
-        """Return the proposed link path after checking client directories."""
-        return destination(root, self.backend) / self.skill.name
+    def destinations(self, root: Path) -> tuple[Path, ...]:
+        """Return link paths, rejecting redirects and conflicts without writes."""
+        directory = destination(root, self.backend)
+        targets = tuple(directory / skill.name for skill in self.skills)
+        for skill, target in zip(self.skills, targets):
+            if not os.path.lexists(target):
+                continue
+            if target.is_symlink():
+                try:
+                    if target.resolve(strict=True) == skill.path.resolve():
+                        continue
+                except (OSError, RuntimeError):
+                    pass
+            raise ValueError(f"Refusing to replace existing destination: {target}")
+        return targets
 
 
 def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> None:
-    """Guide terminal users through review and confirmation before a single write."""
+    """Guide terminal users through review and confirmation before writes."""
     if context.json:
         raise ValueError(
             "quickstart does not support JSON; use init, list, or install instead"
@@ -47,7 +60,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
     console = Console(markup=False, highlight=False)
     console.print("Skill quickstart", style="bold green")
     console.print(
-        "Create starter files or link an installed skill.\n"
+        "Create starter files or link installed skills.\n"
         "No AI; this guide does not install packages or create environments."
     )
     console.print()
@@ -72,18 +85,36 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 )
                 return
             for index, skill in enumerate(skills, 1):
-                console.print(f"{index}. {escape_terminal_controls(skill.name)}")
-            choice = Prompt.ask(
-                "Choose a skill number",
-                choices=[str(i) for i in range(1, len(skills) + 1)],
-                console=console,
-            )
-            selected = skills[int(choice) - 1]
-            console.print()
-            console.print(f"Review source: {escape_terminal_controls(selected.path)}")
-            console.print(
-                f"Description: {escape_terminal_controls(selected.description)}"
-            )
+                console.print(
+                    f"{index}. {escape_terminal_controls(skill.name)}: "
+                    f"{escape_terminal_controls(skill.description)}"
+                )
+            numbered = {str(i): skill for i, skill in enumerate(skills, 1)}
+            while True:
+                choice = Prompt.ask(
+                    "Choose skill numbers (space/comma separated), all, or cancel",
+                    console=console,
+                ).strip()
+                if choice == "cancel":
+                    console.print("Cancelled. No changes made.")
+                    return
+                if choice == "all":
+                    selected = tuple(skills)
+                    break
+                numbers = dict.fromkeys(choice.replace(",", " ").split())
+                if numbers and all(number in numbered for number in numbers):
+                    selected = tuple(numbered[number] for number in numbers)
+                    break
+                console.print(
+                    "Invalid selection. Enter listed numbers, all, or cancel."
+                )
+            for skill in selected:
+                console.print()
+                console.print(f"Name: {escape_terminal_controls(skill.name)}")
+                console.print(f"Review source: {escape_terminal_controls(skill.path)}")
+                console.print(
+                    f"Description: {escape_terminal_controls(skill.description)}"
+                )
             console.print(
                 "A skill is not automatically trustworthy because it comes "
                 "from a package. "
@@ -121,8 +152,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         console.print()
         console.print("Review changes", style="bold")
         if isinstance(selection, SkillSelection):
-            target = selection.destination(root)
-            console.print(f"Link destination: {escape_terminal_controls(target)}")
+            for target in selection.destinations(root):
+                console.print(f"Link destination: {escape_terminal_controls(target)}")
         else:
             name, description = selection
             console.print(f"Create skeleton: {escape_terminal_controls(root / name)}")
@@ -138,7 +169,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         console.print("Cancelled. No changes made.")
     elif isinstance(selection, SkillSelection):
         console.print()
-        install(selection.skill, root, selection.backend)
+        for skill in selection.skills:
+            install(skill, root, selection.backend)
     else:
         console.print()
         init(*selection, root)

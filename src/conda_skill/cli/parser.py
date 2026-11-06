@@ -21,7 +21,15 @@ def configure_status(subparsers: _SubParsersAction[ArgumentParser]) -> None:
     summary = "Show destination entries."
     parser = subparsers.add_parser("status", help=summary, description=summary)
     add_parser_json(parser)
-    _add_destination_options(parser)
+    backends = parser.add_mutually_exclusive_group()
+    backends.add_argument("--backend", choices=("agents", "claude"), default="agents")
+    backends.add_argument(
+        "--all",
+        action="store_true",
+        dest="all_backends",
+        help="Show both agents and claude destinations in the selected scope.",
+    )
+    _add_global_option(parser)
 
 
 def configure_install(subparsers: _SubParsersAction[ArgumentParser]) -> None:

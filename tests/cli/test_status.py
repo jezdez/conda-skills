@@ -4,6 +4,64 @@ import json
 import shutil
 from pathlib import Path
 
+import pytest
+
+
+def test_status_all_labels_existing_destinations(prefix: Path, render_cli) -> None:
+    render_cli("install", "example", "-p", str(prefix))
+    render_cli("install", "example", "-p", str(prefix), "--backend", "claude")
+    entries = json.loads(render_cli("status", "--all", "--json"))
+    assert [entry["backend"] for entry in entries] == ["agents", "claude"]
+    assert all(
+        entry["name"] == "example" and entry["state"] == "linked" for entry in entries
+    )
+    assert "Backend" in render_cli("status", "--all")
+    assert "backend" not in json.loads(render_cli("status", "--json"))[0]
+
+
+def test_status_all_empty(render_cli) -> None:
+    assert json.loads(render_cli("status", "--all", "--json")) == []
+    assert "No skill entries found." in render_cli("status", "--all")
+
+
+def test_status_all_does_not_emit_partial_json(tmp_path: Path, run_cli) -> None:
+    (tmp_path / ".agents/skills/local").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / ".claude").symlink_to(outside, target_is_directory=True)
+    result = run_cli("status", "--all", "--json")
+    assert result.returncode != 0
+    error = json.loads(result.stdout)
+    assert "Refusing redirected client directory" in error["error"]
+
+
+def test_status_all_rejects_explicit_backend(render_cli) -> None:
+    with pytest.raises(SystemExit) as error:
+        render_cli("status", "--all", "--backend", "claude")
+    assert error.value.code == 2
+
+
+def test_status_all_global_is_source_independent(tmp_path: Path, run_cli) -> None:
+    home = tmp_path / "external-home"
+    for backend in ("agents", "claude"):
+        (home / f".{backend}/skills/local").mkdir(parents=True)
+    result = run_cli(
+        "status",
+        "--all",
+        "--global",
+        "--json",
+        env={
+            "HOME": str(home),
+            "USERPROFILE": str(home),
+            "CONDA_PREFIX": str(tmp_path / "missing"),
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    entries = json.loads(result.stdout)
+    assert [entry["backend"] for entry in entries] == ["agents", "claude"]
+    assert all(entry["state"] == "unmanaged" for entry in entries)
+    assert all(Path(entry["path"]).is_relative_to(home) for entry in entries)
+
 
 def test_human_status_output(prefix: Path, render_cli) -> None:
     render_cli("install", "example", "-p", str(prefix))

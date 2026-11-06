@@ -38,7 +38,7 @@ def execute(args: Namespace) -> int:
                 lambda: discover(source_prefix(args)), global_scope=args.global_scope
             )
         elif args.skill_command == "status":
-            status(root, args.backend)
+            status(root, args.backend, all_backends=args.all_backends)
         else:
             prefix = source_prefix(args)
             skills = discover(prefix)
