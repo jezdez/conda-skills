@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} / ${{ matrix.environment }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        environment: [py311, py314]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+        with:
+          environments: ${{ matrix.environment }}
+      - run: pixi run --locked -e ${{ matrix.environment }} check
+
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+        with:
+          environments: build docs
+      - run: pixi run --locked -e build build
+      - run: pixi run --locked -e build check-dist
+      - run: pixi run --locked -e build check-workflows
+      - run: pixi run --locked -e build test-wheel
+      - run: pixi run --locked -e build build-conda
+      - run: pixi run --locked -e build test-example
+      - run: pixi run --locked -e docs docs
+
+  windows-example:
+    name: Build and install generated skills on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+        with:
+          environments: build
+      - run: pixi run --locked -e build test-example

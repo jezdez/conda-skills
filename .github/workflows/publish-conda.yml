@@ -1,0 +1,174 @@
+name: Publish conda package
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing source release tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-conda-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to jezdez/main
+    runs-on: ubuntu-latest
+    environment:
+      name: anaconda
+      url: https://anaconda.org/jezdez/conda-skills
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release tag
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must be a stable numeric version." >&2
+            exit 1
+          fi
+          if [ "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" != "$(git rev-parse HEAD)" ]; then
+            echo "The checked-out commit does not match the release tag." >&2
+            exit 1
+          fi
+      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+        with:
+          environments: build
+          pixi-version: v0.77.0
+          frozen: true
+          cache: true
+      - name: Validate static release metadata
+        run: pixi run --locked -e build python scripts/check_release.py "$RELEASE_TAG"
+      - name: Build exact package
+        run: pixi run --locked -e build build-conda
+      - name: Validate unpublished package
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          packages=(conda-dist/noarch/*.conda)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one noarch conda package." >&2
+            exit 1
+          fi
+
+          metadata="$(
+            pixi run --locked -e build \
+              rattler-build package inspect --json "${packages[0]}"
+          )"
+          jq -se --arg version "$RELEASE_TAG" '
+            length == 1 and (.[0].index
+              | .name == "conda-skills"
+                and .version == $version
+                and .build_number == 0
+                and .subdir == "noarch"
+                and .noarch == "python"
+                and .license == "Apache-2.0")
+          ' <<< "$metadata" >/dev/null
+
+          status="$(
+            curl -sS --connect-timeout 10 --max-time 30 \
+              -o /dev/null \
+              -w '%{http_code}' \
+              "https://api.anaconda.org/release/jezdez/conda-skills/${RELEASE_TAG}"
+          )"
+          if [ "$status" != "404" ]; then
+            echo "Anaconda.org release already exists or could not be checked." >&2
+            exit 1
+          fi
+          printf 'PACKAGE=%s\n' "${packages[0]}" >> "$GITHUB_ENV"
+      - name: Upload immutable package
+        env:
+          ANACONDA_API_KEY: ${{ secrets.ANACONDA_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$ANACONDA_API_KEY" ]; then
+            echo "The anaconda environment must provide ANACONDA_API_KEY." >&2
+            exit 1
+          fi
+          unset ANACONDA_FORCE ANACONDA_SERVER_URL
+          pixi upload --no-config anaconda \
+            --owner jezdez \
+            --channel main \
+            "$PACKAGE"
+      - name: Verify indexed package
+        run: |
+          set -euo pipefail
+
+          filename="${PACKAGE##*/}"
+          expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
+          expected_size="$(stat -c '%s' "$PACKAGE")"
+          metadata="$(
+            pixi run --locked -e build \
+              rattler-build package inspect --json "$PACKAGE"
+          )"
+          build="$(jq -r '.index.build' <<< "$metadata")"
+
+          for _ in {1..12}; do
+            distribution="$(
+              curl -fsSL --connect-timeout 10 --max-time 30 \
+                "https://api.anaconda.org/dist/jezdez/conda-skills/${RELEASE_TAG}/noarch/${filename}"
+            )" || distribution=''
+            repodata="$(
+              curl -fsSL --connect-timeout 10 --max-time 30 \
+                https://conda.anaconda.org/jezdez/noarch/repodata.json
+            )" || repodata=''
+
+            if jq -se \
+              --arg basename "noarch/${filename}" \
+              --arg build "$build" \
+              --arg sha256 "$expected_sha256" \
+              --arg version "$RELEASE_TAG" \
+              --argjson size "$expected_size" '
+                length == 1 and (.[0]
+                  | .basename == $basename
+                    and .version == $version
+                    and .sha256 == $sha256
+                    and .size == $size
+                    and (.labels | index("main"))
+                    and .attrs.build == $build
+                    and .attrs.build_number == 0
+                    and .attrs.subdir == "noarch")
+              ' <<< "$distribution" >/dev/null 2>&1 \
+              && jq -se \
+                --arg filename "$filename" \
+                --arg build "$build" \
+                --arg sha256 "$expected_sha256" \
+                --arg version "$RELEASE_TAG" \
+                --argjson size "$expected_size" '
+                  length == 1 and (.[0]."packages.conda"[$filename]
+                    | .name == "conda-skills"
+                      and .version == $version
+                      and .build == $build
+                      and .build_number == 0
+                      and .subdir == "noarch"
+                      and .noarch == "python"
+                      and .license == "Apache-2.0"
+                      and .sha256 == $sha256
+                      and .size == $size)
+                ' <<< "$repodata" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Could not verify the published package against Anaconda.org distribution metadata and noarch repodata." >&2
+          exit 1
