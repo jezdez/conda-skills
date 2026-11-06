@@ -33,7 +33,11 @@ See [installation](docs/how-to/installation.md) for PyPI and local-artifact alte
 
 - [Documentation home](https://jezdez.github.io/conda-skills/)
 - [Install conda-skills](docs/how-to/installation.md)
-- [Set up a skill for your agent](docs/tutorials/first-skill.md)
+- [Use a skill from skill-forge](docs/tutorials/skill-forge.md)
+- [Manage reproducible project skills](docs/how-to/project-skills.md)
+- [Update and pin skills](docs/how-to/update-skills.md)
+- [Build a skill locally](docs/tutorials/first-skill.md)
+- [Watch the demos](docs/demos.md)
 - [Package a skill](docs/how-to/package-a-skill.md)
 - [Commands](docs/reference/commands.md) and [JSON output](docs/reference/json.md)
 - [Source environments and destination scope](docs/explanation/scope.md)

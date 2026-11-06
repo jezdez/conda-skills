@@ -9,18 +9,18 @@ This is unreleased development software. Python package versions are derived fro
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} Set up a skill for your agent
-:link: tutorials/first-skill
+:::{grid-item-card} Use a skill from skill-forge
+:link: tutorials/skill-forge
 :link-type: doc
 
-Build the supplied example locally, inspect it, create a project link, and remove it.
+Install a published skill, review its instructions, and make it available to your project.
 :::
 
-:::{grid-item-card} Package a skill
-:link: how-to/package-a-skill
+:::{grid-item-card} Keep project skills reproducible
+:link: how-to/project-skills
 :link-type: doc
 
-Use a complete SKILL.md and conda recipe to make your skill discoverable.
+Declare skill packages in conda.toml, review the lockfile, and reproduce the environment.
 :::
 
 :::{grid-item-card} Look up commands
@@ -43,19 +43,22 @@ Installing a link does not install a package, launch an agent, or change client 
 
 ## See it in action
 
-Watch the {doc}`demos` to see an installed skill made available to a project and a new skill created with the interactive guide. Each recording has a text equivalent and links to the relevant tutorial or how-to guide.
+Watch the {doc}`demos` for skill-forge installation, locked project skills, authoring, and broken-link recovery. Each recording has a text equivalent and links to the relevant tutorial or how-to guide.
 
-```{image} ../demos/use-a-skill.gif
-:alt: Terminal demo of reviewing and enabling an installed skill for a project, then removing its link.
+```{image} ../demos/skill-forge.gif
+:alt: Terminal demo of installing the Polars skill from skill-forge, reviewing its header, linking it to a project, and removing the link.
 :target: demos/
 ```
 
 Already have a skill package? Go straight to {doc}`how-to/use-an-installed-skill`. Writing your own? Start with {doc}`how-to/create-a-skill`.
 
+For a complete authoring exercise, {doc}`tutorials/first-skill` builds the supplied example locally. For ongoing maintenance, see {doc}`how-to/update-skills`. The difference between a package, a skill, its library dependencies, and agent discovery is covered in {doc}`explanation/packages-and-discovery`.
+
 ```{toctree}
 :hidden:
-:caption: Tutorial
+:caption: Tutorials
 
+tutorials/skill-forge
 tutorials/first-skill
 ```
 
@@ -65,6 +68,8 @@ tutorials/first-skill
 
 how-to/installation
 how-to/use-an-installed-skill
+how-to/project-skills
+how-to/update-skills
 how-to/create-a-skill
 how-to/package-a-skill
 how-to/troubleshooting
@@ -85,6 +90,7 @@ reference/skill-format
 
 explanation/scope
 explanation/ownership-and-trust
+explanation/packages-and-discovery
 explanation/prior-art
 ```
 

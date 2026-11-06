@@ -1,0 +1,10 @@
+[workspace]
+name = "project-skills"
+channels = ["https://prefix.dev/skill-forge", "conda-forge"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
+
+[feature.skills.dependencies]
+agent-skill-polars = "==0.0.8"
+
+[environments]
+skills = ["skills"]

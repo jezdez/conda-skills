@@ -1,5 +1,21 @@
 # Troubleshooting
 
+## Skill-forge metadata fails to load
+
+With conda-rattler-solver 26.10.2, channel loading may fail with `Object of type bytes is not JSON serializable` while processing `attestations_sha256`. This happens before conda-skills runs. A verified workaround is to use libmamba for the affected package command:
+
+```sh
+conda create --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+```
+
+For `conda workspace lock`, which has no solver flag, select libmamba for the current invocation in Bash or zsh:
+
+```sh
+CONDA_SOLVER=libmamba conda workspace lock
+```
+
+In PowerShell, set `$env:CONDA_SOLVER = "libmamba"` for the command and restore its previous value afterward. This workaround changes neither package ownership checks nor signature verification policy. Do not disable plugins or verification to bypass an integrity failure.
+
 ## `conda skill` is not recognized
 
 Check `conda --version` and the environment that provides the executable. The plugin needs conda 26.9 or newer and Python 3.11 or newer, and must be installed in that same environment.
