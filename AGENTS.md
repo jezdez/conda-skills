@@ -4,11 +4,12 @@
 
 - The distribution and conda entry-point name are `conda-skills`. The Python
   package is `conda_skill`, and the command is `conda skill`.
-- `src/conda_skill/plugin.py` owns registration and parser configuration for
-  `list`, `status`, `install`, and `remove`. Keep registration cheap to import.
+- `src/conda_skill/plugin.py` owns registration. `cli/parser.py` owns lightweight
+  per-command parser configuration. Neither loads execution or rendering modules.
 - `cli/main.py` owns dispatch, source environment and skill selection,
   destination scope, and conda error handling. `cli/list.py`, `cli/status.py`,
-  `cli/install.py`, and `cli/remove.py` own command execution and output.
+  `cli/install.py`, `cli/remove.py`, `cli/init.py`, and `cli/quickstart.py` own
+  command execution and output.
   `cli/output.py` shares terminal escaping and table rendering.
 - `skills.py` owns the `Skill` model, single-directory loading and validation,
   and discovery through installed conda package records.
@@ -30,11 +31,13 @@
 - Rich is a required dependency. Import its output classes at module scope in
   CLI modules; do not use optional imports, fallbacks, or imports inside rendering.
 - Keep `__init__.py` free of implementation imports. Loading the plugin and
-  configuring its parser must not load CLI, discovery, or link implementations.
+  configuring its parser must not load execution, rendering, discovery, or link
+  implementations. Loading the lightweight `cli.parser` is allowed.
 - Prefer stdlib, conda APIs, and existing dependencies. Do not add a framework
   or another parser for behavior an existing library handles.
 - Declare minimum runtime versions in `pyproject.toml`. Provision dependencies
-  through `pixi.toml`; conda itself comes from a conda channel, not PyPI.
+  through `pixi.toml`; conda itself comes from a conda channel, not PyPI, so its
+  requirement is declared in Pixi and the conda recipe rather than wheel metadata.
 
 ## Code structure
 
@@ -49,7 +52,7 @@
 - Keep argparse, Rich, printing, and exit-status decisions out of domain modules.
 - Do not add section-divider comments to organize large files. Use topic-specific
   modules and descriptive names.
-- Add concise docstrings for functions and classes. Explain purpose, important
+- Add concise docstrings for functions and classes. Explain purpose,
   constraints, return values, and failure behavior without narrating the code.
 
 ## Typing and formatting
@@ -68,10 +71,17 @@
   default, home with `--global`.
 - Home-directory mutations require explicit `--global`. Preserve the existing
   backend paths for `agents` and `claude`.
+- `init` creates an authoring skeleton, not an installed or trusted skill.
+  Never overwrite an existing destination, including a dangling symlink. Serialize
+  user-provided metadata safely rather than interpolating it into YAML.
+- `quickstart` is a deterministic interactive guide, not an AI agent. Reuse the
+  same discovery, skeleton generation, and linking operations as explicit commands.
+  Require an interactive terminal and confirmation before writes. Do not install
+  packages implicitly; selecting home in a prompt does not replace `--global`.
 - Discover only headers recorded in conda packages. Validate names, frontmatter,
   duplicate ownership, and filesystem containment. Never execute skill content
   or imply that package ownership establishes trustworthiness.
-- Installation is idempotent for a matching link and refuses other destinations.
+- Installation reuses a matching link and refuses other destinations.
   Removal only unlinks a matching destination; it never deletes package files.
 - Preserve redirected-directory and escaping-symlink checks. Keep relative links
   where possible and absolute targets across Windows drives. Do not silently
@@ -85,6 +95,8 @@
   characters visibly and prevent Rich markup interpretation.
 - `--json` changes only output format. Use `context.json` and emit one complete,
   unstyled JSON value on stdout. Never send structured JSON through Rich.
+- The interactive `quickstart` command rejects JSON mode before prompting and
+  directs non-interactive users to explicit commands.
 - Preserve the result shapes: arrays for `list` and `status`, `name` and `path`
   for `install`, and `name` and boolean `removed` for `remove`.
 - Translate validation and filesystem errors through conda's normal error
@@ -109,8 +121,12 @@
 - Cover filesystem conflicts and containment, malformed metadata, human output,
   literal terminal text, and complete JSON documents. Prefer behavioral assertions
   over snapshots of table borders or implementation details.
-- When shared test support files are added, ensure the source distribution
-  includes them. `MANIFEST.in` includes the shared `conftest.py` files explicitly.
+- Include new shared test support files in the source distribution.
+  `MANIFEST.in` includes the shared `conftest.py` files explicitly.
+- Artifact checks execute `scripts/smoke_plugin.py` outside the checkout. The wheel
+  check uses a disposable environment and verifies that imports come from it.
+- Exercise generated skill recipes through an actual build and installed discovery;
+  checking that template files exist is not sufficient validation.
 
 ## Validation and lockfiles
 
@@ -138,8 +154,20 @@ pixi run --locked build
 
 - Keep README commands and names consistent with the implementation. Explain
   source environments, destination scopes, ownership, and trust separately.
-- Keep prose factual and concise. Do not copy conda-workspaces' solver, task,
-  manifest, Sphinx, or coverage workflows into this smaller plugin.
+- Maintain the Sphinx/MyST site under `docs/` with `conda-sphinx-theme` and
+  `sphinx-design`. Organize tutorials, how-to guides, reference, and explanations
+  around reader needs. Strict docs builds treat warnings as errors.
+- Keep prose factual and concise. Execute tutorial examples; a successful HTML
+  build does not prove commands work. Keep unreleased installation paths explicit.
+- User installation docs use conda or conda-pypi in the environment owning conda.
+  Reserve Pixi commands for contributor workflows and package-build tooling.
+- Do not copy conda-workspaces' solver, task, or workspace-manifest workflows.
+- Keep the static version in `pyproject.toml` and `recipe/recipe.yaml` synchronized.
+  Follow `RELEASING.md`; version checks do not authorize tagging or publishing.
+- Pull requests run native tests and artifact/docs checks. Stable numeric tags
+  trigger the separately protected PyPI and jezdez/main publication workflows.
+  Pin actions to full commit SHAs. Do not invent repository or documentation URLs.
+  Never tag, push, configure credentials, or publish without explicit authorization.
 - Write PR and issue bodies with one line per paragraph or bullet. Keep commit
   subjects concise. Commit, push, or publish only when explicitly requested.
 - Preserve unrelated changes. Do not assume the checkout has Git metadata or

@@ -1,126 +1,52 @@
 # conda-skills
 
-Connect conda-packaged agent skills to your coding agent. `conda skill` finds
-skills installed in a conda environment and links their complete directories
-into a project or your home directory.
+`conda skill` finds agent skills installed by conda and creates directory links so your agent can use them in a project or from your home directory. Conda manages the package versions; you choose which skills to make available.
 
-This implements the package-manager approach described in Pavel Zwerschke's
-[Managing Agent Skills with Your Package Manager](https://pavel.pink/blog/pixi-skills).
-It uses conda environments rather than Pixi workspace discovery. It is a separate
-implementation, not a wrapper around pixi-skills.
+This is unreleased development software. The source version is `0.1.0`; no public package release is available yet. It requires Python 3.11 or newer and conda 26.9 or newer. Conda must come from a conda installation, not PyPI.
 
-## Try it from this checkout
+## Installation
 
-Requires Pixi for development. The plugin itself requires Python 3.11 or newer
-and conda 26.9 or newer, with conda installed from a conda channel rather than PyPI.
-No public package release is available yet.
+After the first release, install into the environment that runs conda, usually `base`:
 
 ```sh
-pixi install --locked
-pixi run --locked install
-pixi run --locked conda skill --help
+conda install -n base --override-channels -c jezdez -c conda-forge conda-skills
+conda skill --help
 ```
 
-For normal use, the plugin must be installed in the environment that provides
-your `conda` executable. Skills may live in another environment selected with
-`-n` or `-p`. Installing this plugin in an arbitrary environment does not make a
-different conda executable discover it.
-
-## Link a packaged skill
-
-First install a reviewed skill package through conda using your chosen channel
-or local artifact. It must install a folder such as:
-
-```text
-<prefix>/share/agent-skills/example/
-  SKILL.md
-  references/
-```
-
-Its `SKILL.md` must be listed in an installed conda package record, have a `name`
-matching its folder, and a nonempty text `description`. Untracked folders are not
-discovered. The command does not execute skill instructions or verify their
-trustworthiness. Read skills before exposing them to an agent.
-
-From the project where you want to use the skill:
+This package is not yet available on the channel or PyPI. Until it is published, install from a checkout with `conda-pypi` in the environment that runs conda:
 
 ```sh
-conda skill list -n development
-conda skill install example -n development --backend agents
-conda skill status --backend agents
-conda skill remove example -n development --backend agents
+conda install -n base --override-channels -c conda-forge "conda-pypi>=0.12" "rich>=13" "ruamel.yaml>=0.11.14,<0.20"
+conda pypi install -n base -e .
+conda skill --help
 ```
 
-Replace `example` with a name from `list`. Without `-n` or `-p`, conda selects its
-default environment, normally the active environment or base when none is active.
-`install` creates a relative directory symlink. It does not download or install
-packages. References and other companion files remain available through the link.
+Run the checkout commands from this repository root. The first command supplies the plugin's runtime dependencies because editable installs do not resolve them. If another prefix owns your conda executable, replace `-n base` with `-p /path/to/conda-prefix` in both commands. The [first-use tutorial](docs/tutorials/first-skill.md) builds a supplied example package locally, installs it in a separate source environment, and walks through linking and removal.
 
-## Destinations and automation
+See [installation](docs/how-to/installation.md) for PyPI and local-artifact alternatives. Installing the plugin in an unrelated environment does not register it with another conda executable.
 
-| Backend | Project destination | With `--global` |
-| --- | --- | --- |
-| `agents` (default) | `.agents/skills/` | `~/.agents/skills/` |
-| `claude` | `.claude/skills/` | `~/.claude/skills/` |
+## Documentation
 
-Run project commands from the intended project root. Mutating commands run from
-your home directory also require `--global`, to avoid accidental global changes.
-The shared `agents` path is
-used by Codex and current Kilo, among other clients. This plugin does not modify
-client configuration or launch clients, and client discovery is not tested here.
+- [Documentation home](docs/index.md)
+- [Install conda-skills](docs/how-to/installation.md)
+- [Set up a skill for your agent](docs/tutorials/first-skill.md)
+- [Package a skill](docs/how-to/package-a-skill.md)
+- [Commands](docs/reference/commands.md) and [JSON output](docs/reference/json.md)
+- [Source environments and destination scope](docs/explanation/scope.md)
+- [Package ownership and trust](docs/explanation/ownership-and-trust.md)
+- [Troubleshooting](docs/how-to/troubleshooting.md)
 
-Each subcommand accepts `--json`. Successful `list` and `status` output is a JSON
-array. `install` returns the skill name and link path. `remove` returns the name
-and a boolean `removed`. Errors use conda's JSON error handling and a nonzero exit
-status. Put environment options after `list`, `install`, or `remove`:
-
-```sh
-conda skill list -p /path/to/environment --json
-conda skill install example -p /path/to/environment --global --json
-```
-
-The source environment and destination scope are independent. `--global` changes
-where links go; it does not select or scan every environment on the machine.
-
-## Conflicts and stale links
-
-Installing the same link twice is harmless. An existing file, directory, or link
-to another source is a conflict, even if that link is broken. The plugin will not
-overwrite it. Client-directory symlinks that redirect writes are also rejected.
-
-Removal only unlinks a destination matching the named skill in the selected
-source environment. Package files remain untouched. This checks the target, not
-which tool originally created the link. `status` reports links and unmanaged
-entries, including broken links, without claiming they belong to this plugin.
-
-Remove links before deleting the source package or environment. If the source
-is already gone, `status` can show the dangling link but automatic removal is
-unavailable because package ownership can no longer be established. Inspect and
-remove that link manually. Updating a package in the same prefix makes its new
-contents available through existing links.
-
-Windows directory symlinks need Developer Mode or suitable privileges. Across
-different Windows drives, links use absolute targets because relative paths are
-not possible. Failure is reported without falling back to copying files. Moving a
-project and its environment independently can break relative links. Inspect and
-remove each stale link manually, then reinstall it from the new source environment.
+The default destination is `.agents/skills/` under the current directory. `--backend claude` selects `.claude/skills/`; `--global` uses your home directory. Read skill content before exposing it to an agent. The plugin does not execute instructions or verify their trustworthiness.
 
 ## Development
 
 ```sh
 pixi run --locked check
-pixi run --locked build
+pixi run --locked -e docs docs
 ```
 
-Tests exercise actual installed `conda skill` commands and filesystem operations
-using temporary package records and isolated client homes. The locked environment
-covers Linux, macOS ARM64, and Windows, but execution has so far been verified on
-macOS ARM64 only. The `check` task runs pytest, Ruff, and ty. The prek configuration
-uses that task for Git hooks when you choose to install them in a Git repository.
+See [Contributing](CONTRIBUTING.md), [Release preparation](RELEASING.md), and the [Changelog](CHANGELOG.md). Documentation builds locally; no public documentation URL is configured.
 
-There is no interactive manager, package solver, activation hook, skill registry,
-automatic client discovery, or persistent link database. Manage package versions
-with conda and keep linking explicit.
+## License and prior art
 
-Original code is licensed under Apache-2.0. The blog and pixi-skills are referenced
-as prior art; their source code is not bundled.
+Original code is licensed under [Apache-2.0](LICENSE). The idea of distributing skills through a package manager comes from Pavel Zwerschke's [Managing Agent Skills with Your Package Manager](https://pavel.pink/blog/pixi-skills). This project uses conda environments instead of Pixi workspace discovery and does not bundle pixi-skills source code.

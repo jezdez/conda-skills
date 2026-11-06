@@ -1,0 +1,29 @@
+schema_version: 1
+
+package:
+  name: conda-skills-example
+  version: "0.1.0"
+
+source:
+  path: ../../..
+
+build:
+  number: 0
+  string: "0"
+  noarch: generic
+  script:
+    - python docs/examples/build.py
+
+requirements:
+  build:
+    - python >=3.11
+
+tests:
+  - package_contents:
+      files:
+        - share/agent-skills/review-notes/SKILL.md
+
+about:
+  summary: Local example skill for the conda-skills tutorial
+  license: Apache-2.0
+  license_file: LICENSE
