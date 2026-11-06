@@ -1,11 +1,68 @@
 from __future__ import annotations
 
+import gzip
+import io
+import os
 import runpy
 import shutil
+import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
+from conda.common.serialize import yaml
+
+
+@pytest.mark.parametrize("damage", ["none", "truncated", "checksum"])
+def test_release_checks_gzip_before_recording_digest(
+    tmp_path: Path, damage: str
+) -> None:
+    bash = shutil.which("bash")
+    if not bash or not shutil.which("gzip") or not shutil.which("sha256sum"):
+        pytest.skip("Release shell tools are unavailable")
+    workflow = yaml.loads(
+        (Path(__file__).parents[1] / ".github/workflows/release.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    step = next(
+        step
+        for step in workflow["jobs"]["build"]["steps"]
+        if step.get("id") == "artifacts"
+    )
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "conda_skills-0.1.0-py3-none-any.whl").touch()
+    raw = io.BytesIO()
+    with tarfile.open(fileobj=raw, mode="w") as archive:
+        metadata = b"Metadata-Version: 2.4\nName: conda-skills\nVersion: 0.1.0\n"
+        member = tarfile.TarInfo("conda_skills-0.1.0/PKG-INFO")
+        member.size = len(metadata)
+        archive.addfile(member, io.BytesIO(metadata))
+    compressed = gzip.compress(raw.getvalue())
+    if damage == "truncated":
+        compressed = compressed[:-8]
+    elif damage == "checksum":
+        compressed = compressed[:-8] + bytes([compressed[-8] ^ 1]) + compressed[-7:]
+    (dist / "conda_skills-0.1.0.tar.gz").write_bytes(compressed)
+    script = tmp_path / "check-artifacts.sh"
+    script.write_text(step["run"], encoding="utf-8")
+    output = tmp_path / "output"
+    result = subprocess.run(
+        [bash, str(script)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "RELEASE_TAG": "0.1.0", "GITHUB_OUTPUT": str(output)},
+        timeout=30,
+    )
+    if damage == "none":
+        assert result.returncode == 0, result.stderr
+        assert output.read_text().startswith("source_sha256=")
+    else:
+        assert result.returncode != 0
+        assert not output.exists()
 
 
 @pytest.fixture(params=["static", "vcs"])
