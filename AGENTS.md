@@ -11,8 +11,11 @@
   `cli/install.py`, `cli/remove.py`, `cli/init.py`, and `cli/quickstart.py` own
   command execution and output.
   `cli/output.py` shares terminal escaping and table rendering.
-- `skills.py` owns the `Skill` model, single-directory loading and validation,
-  and discovery through installed conda package records.
+- `skills.py` owns the frozen installed `Skill` model, shared metadata validation,
+  directory loading, and discovery through conda package records.
+  `Skill.create_skeleton()` generates authoring files and returns their path;
+  it does not construct an installed skill. Quickstart keeps pending authoring
+  inputs separate from its frozen `SkillSelection` for an installed skill.
 - `links.py` owns backend destinations, link installation and removal, and
   filesystem status. Status includes unmanaged and broken entries; it must not
   require a valid source environment or claim package ownership.
@@ -36,8 +39,9 @@
 - Prefer stdlib, conda APIs, and existing dependencies. Do not add a framework
   or another parser for behavior an existing library handles.
 - Declare minimum runtime versions in `pyproject.toml`. Provision dependencies
-  through `pixi.toml`; conda itself comes from a conda channel, not PyPI, so its
-  requirement is declared in Pixi and the conda recipe rather than wheel metadata.
+  through the root `conda.toml`; conda itself comes from a conda channel, not PyPI,
+  so its requirement is declared there and in the conda recipe rather than wheel
+  metadata.
 
 ## Code structure
 
@@ -46,6 +50,8 @@
 - Put behavior on an existing model when it owns the data. `Skill.from_directory`
   loads and validates one candidate; `discover` selects package-owned candidates
   and checks duplicate ownership.
+- Prefer frozen dataclasses for related data with its own validation or operations.
+  Do not wrap stateless formatting or parser functions in classes.
 - Before adding a helper, check whether conda or an existing dependency already
   provides it, then whether an existing model owns it. Keep short one-use glue
   inline. Reusable module functions need a clear responsibility and docstring.
@@ -122,7 +128,8 @@
   literal terminal text, and complete JSON documents. Prefer behavioral assertions
   over snapshots of table borders or implementation details.
 - Include new shared test support files in the source distribution.
-  `MANIFEST.in` includes the shared `conftest.py` files explicitly.
+  Hatchling's explicit sdist includes in `pyproject.toml` cover `tests/`, including
+  its shared `conftest.py` files. Keep build output out of the source distribution.
 - Artifact checks execute `scripts/smoke_plugin.py` outside the checkout. The wheel
   check uses a disposable environment and verifies that imports come from it.
 - Exercise generated skill recipes through an actual build and installed discovery;
@@ -130,22 +137,36 @@
 
 ## Validation and lockfiles
 
-Run the full checks after production or test changes:
+Bootstrap the workspace tooling when needed:
 
 ```sh
-pixi run --locked check
+conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
 ```
 
-This installs the editable plugin in the selected environment and runs pytest,
-Ruff lint, the formatting check, and ty. Use `pixi run --locked format` to apply
-formatting. Validate packaging changes with:
+The root `conda.toml` defines `default`, `py311`, `py314`, `docs`, and `build`.
+Install the selected environment from `conda.lock` before running tasks. Run the
+full checks after production or test changes:
 
 ```sh
-pixi run --locked build
+conda workspace install --locked -e default
+conda task run -e default check
 ```
 
-- Run `pixi lock` after dependency or workspace metadata changes and keep the
-  updated lockfile with those changes. Do not hand-edit the lockfile.
+The `check` task installs the editable plugin in the selected environment and runs
+pytest, Ruff lint, the formatting check, and ty. Use
+`conda task run -e default format` to apply formatting. Validate packaging changes
+with:
+
+```sh
+conda workspace install --locked -e build
+conda task run -e build build
+```
+
+- `--locked` belongs to workspace installation, not task execution. Tasks only run
+  named manifest tasks; use `conda workspace run -e ENV -- COMMAND` for arbitrary
+  commands in an installed environment.
+- Run `conda workspace lock` after dependency or workspace metadata changes and
+  keep the generated `conda.lock` with those changes. Do not hand-edit the lockfile.
 - Report checks actually run. Locked Linux, macOS ARM64, and Windows environments
   do not establish native-platform test coverage; report native runs separately.
 - Do not claim CI, publication, or agent-client discovery from local test results.
@@ -160,9 +181,17 @@ pixi run --locked build
 - Keep prose factual and concise. Execute tutorial examples; a successful HTML
   build does not prove commands work. Keep unreleased installation paths explicit.
 - User installation docs use conda or conda-pypi in the environment owning conda.
-  Reserve Pixi commands for contributor workflows and package-build tooling.
-- Do not copy conda-workspaces' solver, task, or workspace-manifest workflows.
-- Keep the static version in `pyproject.toml` and `recipe/recipe.yaml` synchronized.
+  Reserve conda-workspaces commands for contributor workflows and package-build
+  tooling.
+- Use conda-workspaces for development tooling; do not add solver, task, or
+  workspace-manifest implementations to this plugin.
+- Build with Hatchling and hatch-vcs. Derive the Python version from Git and never
+  edit the generated `src/conda_skill/_version.py`. The `0.1.0` fallback is for
+  development without usable version metadata, not evidence of a release.
+- Keep `recipe/recipe.yaml`'s candidate version equal to the intended release tag.
+  Its build-local `SETUPTOOLS_SCM_PRETEND_VERSION` supplies that version when
+  building copied source without Git. Release checks compare the tag with the
+  resolved Python version and recipe candidate; do not override their version.
   Follow `RELEASING.md`; version checks do not authorize tagging or publishing.
 - Pull requests run native tests and artifact/docs checks. Stable numeric tags
   trigger the separately protected PyPI and jezdez/main publication workflows.

@@ -4,7 +4,7 @@
 
 Check `conda --version` and the environment that provides that executable. The plugin requires conda 26.9 or newer and Python 3.11 or newer, and must be installed into the executable's environment. Installing it into a separate source environment will not register it with base conda.
 
-Follow {doc}`installation`, then run `conda skill --help`. Check whether conda's external plugins are disabled by `CONDA_NO_PLUGINS` or your invocation's `--no-plugins` option. Development environments created with Pixi are separate from your usual conda installation; installing there does not register the plugin with base conda.
+Follow {doc}`installation`, then run `conda skill --help`. Check whether conda's external plugins are disabled by `CONDA_NO_PLUGINS` or your invocation's `--no-plugins` option. Development environments created with conda-workspaces are separate from your usual conda installation; installing there does not register the plugin with base conda.
 
 ## `conda pypi` is not recognized or an editable install fails
 

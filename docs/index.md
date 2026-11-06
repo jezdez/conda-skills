@@ -2,7 +2,7 @@
 
 `conda skill` connects conda-packaged agent skills to coding agents. It discovers skills in an installed conda environment and creates directory symlinks under `.agents/skills/` or `.claude/skills/`. Companion files remain available through the same link.
 
-This is unreleased development software with source version `0.1.0`. You need Python 3.11 or newer and conda 26.9 or newer. Install the plugin into the environment that runs conda, then select any existing source environment with `-n` or `-p`. Start with {doc}`how-to/installation` if `conda skill --help` is not available.
+This is unreleased development software. Python package versions are derived from Git; the conda recipe's current candidate is `0.1.0`. You need Python 3.11 or newer and conda 26.9 or newer. Install the plugin into the environment that runs conda, then select any existing source environment with `-n` or `-p`. Start with {doc}`how-to/installation` if `conda skill --help` is not available.
 
 ::::{grid} 1 1 2 2
 :gutter: 3

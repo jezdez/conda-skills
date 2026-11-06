@@ -2,17 +2,21 @@
 
 ## Development environment
 
-Use [Pixi](https://pixi.sh) from a local checkout. The environments and tasks are defined in `pixi.toml`; `pixi.lock` records their dependencies. Conda is provisioned from a conda channel, not PyPI.
+Use conda-workspaces from a local checkout. The root `conda.toml` defines the `default`, `py311`, `py314`, `docs`, and `build` environments and their tasks. The generated `conda.lock` records their resolved dependencies. Conda is provisioned from a conda channel, not PyPI.
 
-Run the full default check before changing code:
+Bootstrap the tooling, install the locked default environment, and run the full check before changing code:
 
 ```sh
-pixi run --locked check
+conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+conda workspace install --locked -e default
+conda task run -e default check
 ```
 
-This installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, and ty. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
+The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, and ty. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
 
-For use with your usual conda executable, follow the checkout instructions in `docs/how-to/installation.md`, which use `conda-pypi` and an explicit target environment. Pixi's check and build environments are separate from that installation. Validate installation examples in disposable environments, not a shared base environment.
+For use with your usual conda executable, follow the checkout instructions in `docs/how-to/installation.md`, which use `conda-pypi` and an explicit target environment. The workspace's check and build environments are separate from that installation. Validate installation examples in disposable environments, not a shared base environment.
+
+`--locked` belongs to `conda workspace install`, not `conda task run`. Tasks run named commands from the manifest. To run an arbitrary command in an installed environment, use `conda workspace run -e ENV -- COMMAND`.
 
 ## Code changes
 
@@ -23,37 +27,42 @@ Test changed behavior, particularly filesystem conflicts, containment, malformed
 Run checks with the oldest and newest supported Python versions as well as the default environment:
 
 ```sh
-pixi run --locked check
-pixi run --locked -e py311 check
-pixi run --locked -e py314 check
+conda workspace install --locked -e default
+conda task run -e default check
+conda workspace install --locked -e py311
+conda task run -e py311 check
+conda workspace install --locked -e py314
+conda task run -e py314 check
 ```
 
-Use `pixi run --locked format` to apply the project's formatter. When changing dependency or workspace metadata, run `pixi lock` and include the regenerated lockfile. Do not edit the lockfile by hand.
+Use `conda task run -e default format` to apply the project's formatter after installing the default environment. When changing dependency or workspace metadata, run `conda workspace lock` and include the regenerated `conda.lock`. Do not edit the lockfile by hand.
 
-To install local commit hooks, run `pixi run --locked install-hooks`. Run them explicitly with `pixi run --locked prek`.
+To install local commit hooks, run `conda task run -e default install-hooks`. Run them explicitly with `conda task run -e default prek`.
 
 ## Documentation changes
 
 The site uses Sphinx, MyST Markdown, `conda-sphinx-theme`, and `sphinx-design`. Keep tutorials, task-oriented guides, reference, and explanations distinct. Use the theme's cards and tabs where they help readers navigate; no custom CSS is needed for ordinary content.
 
 ```sh
-pixi run --locked -e docs docs
+conda workspace install --locked -e docs
+conda task run -e docs docs
 ```
 
 The documentation task treats warnings as errors and checks references (`-W -n`). Review the rendered pages under `docs/_build/` for navigation, readable code blocks, and mobile layout. The configuration excludes build output, example sources, and `superpowers` planning directories from page discovery. Example sources remain available through literal includes.
 
 Execute affected tutorial commands in disposable state. A successful Sphinx build does not execute shell examples or establish agent-client discovery. The first-use tutorial builds the maintained recipe under `docs/examples/`; report which operating systems and shell variants you actually exercised.
 
-`pixi run --locked -e build test-example` builds that recipe and checks the install, list, link, status, and remove workflow in a temporary environment and project.
+Install the build environment with `conda workspace install --locked -e build`, then run `conda task run -e build test-example`. This builds that recipe and checks the install, list, link, status, and remove workflow in a temporary environment and project.
 
 ## Packaging changes
 
 ```sh
-pixi run --locked -e build build
-pixi run --locked -e build check-dist
-pixi run --locked -e build test-wheel
-pixi run --locked -e build build-conda
-pixi run --locked -e build check-workflows
+conda workspace install --locked -e build
+conda task run -e build build
+conda task run -e build check-dist
+conda task run -e build test-wheel
+conda task run -e build build-conda
+conda task run -e build check-workflows
 ```
 
 Python distributions go to `dist/`; conda artifacts go to `conda-dist/`. Check the built artifacts rather than relying only on editable-install tests. Follow `RELEASING.md` for version checks and release preparation. These commands do not publish packages.

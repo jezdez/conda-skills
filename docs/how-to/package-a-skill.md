@@ -55,10 +55,11 @@ The build script copies the skill to the required prefix-relative path:
 
 The recipe's build dependency supplies Python for copying files. `noarch: generic` is suitable because this example contains only portable Markdown and has no runtime dependencies. If your skill contains platform-specific programs or requires tools at runtime, declare and test those requirements in its recipe; the plugin does not infer them from the instructions. This recipe's license path points to the repository license. Use the license that applies to your own content.
 
-From the checkout root:
+Set up conda-workspaces as described in {doc}`../contributing`. From the checkout root, install the locked build environment and run rattler-build:
 
 ```sh
-pixi run --locked -e build rattler-build build --recipe docs/examples/recipe/recipe.yaml --output-dir conda-dist -c conda-forge
+conda workspace install --locked -e build
+conda workspace run -e build -- rattler-build build --recipe docs/examples/recipe/recipe.yaml --output-dir conda-dist -c conda-forge
 ```
 
 The package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. The recipe's package-contents test checks that the header was packaged. The example uses a fixed build string. For your own package, follow your channel's version and build-number policy.

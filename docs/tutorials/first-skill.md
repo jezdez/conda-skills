@@ -4,7 +4,13 @@ Set up a project so your agent can find instructions for organizing code-review 
 
 ## Before you start
 
-You need this repository checkout, [Pixi](https://pixi.sh), and a conda installation in which `conda skill --help` works. Follow {doc}`../how-to/installation` to install the plugin into the environment that runs your usual conda command. You will run that conda command outside Pixi. Setting up the locked build environment requires network access.
+You need this repository checkout and a conda installation in which `conda skill --help` works. Follow {doc}`../how-to/installation` to install the plugin into the environment that runs your usual conda command. Install conda-workspaces for the package-build tooling:
+
+```sh
+conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+```
+
+If another prefix owns your conda executable, replace `-n base` with `-p /path/to/conda-prefix`. Setting up the locked build environment requires network access.
 
 On Windows, enable Developer Mode or use an account with directory-symlink privileges. Use the PowerShell tab where commands differ. On macOS or Linux, use the POSIX tab. Start in the repository root. The commands create a new temporary directory, so they do not change your existing projects or home-directory skills.
 
@@ -21,7 +27,8 @@ Its directory name and frontmatter name are both `review-notes`. The conda packa
 Build the example package from the checkout root:
 
 ```sh
-pixi run --locked -e build rattler-build build --recipe docs/examples/recipe/recipe.yaml --output-dir conda-dist -c conda-forge
+conda workspace install --locked -e build
+conda task run -e build build-example
 ```
 
 The recipe fixes the example version and build string, so the package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. You will install this local file; these steps do not depend on the example being available on a public channel. The build downloads Python to build the package. The skill itself has no runtime dependencies. See {doc}`../how-to/package-a-skill` for the recipe and installed layout.

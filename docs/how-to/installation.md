@@ -59,14 +59,16 @@ From the checkout root, for a standard installation:
 
 ```sh
 conda run -n base python --version
-conda install -n base --override-channels -c conda-forge "conda-pypi>=0.12" "rich>=13" "ruamel.yaml>=0.11.14,<0.20"
+conda install -n base --override-channels -c conda-forge "conda-pypi>=0.12" "hatchling>=1.27" "hatch-vcs>=0.4" "rich>=13" "ruamel.yaml>=0.11.14,<0.20"
 conda pypi install -n base -e .
 conda skill --help
 ```
 
 Check the reported Python and conda versions against the minimum requirements before installing. Use `conda-pypi` 0.12 or newer, which fixes explicit `--name` and `--prefix` selection. An editable installation continues to read Python source from the checkout; keep the checkout at the same path.
 
-`conda-pypi` builds a PEP 660 editable wheel and installs it as a conda package. That editable installation does not resolve runtime dependencies, so the `conda install` command supplies `rich` and `ruamel.yaml` explicitly. During the build, `conda-pypi` installs missing build requirements through conda. Only install a checkout whose build code you trust.
+`conda-pypi` builds a PEP 660 editable wheel and installs it as a conda package. That editable installation does not resolve runtime dependencies, so the `conda install` command supplies `rich` and `ruamel.yaml` explicitly, along with the Hatchling and hatch-vcs build requirements. Only install a checkout whose build code you trust.
+
+Hatchling and hatch-vcs derive the Python package version from Git. Untagged or modified checkouts can produce development versions. The `0.1.0` fallback for source without usable version metadata is only for development; it does not indicate a published release. The local conda recipe uses its own candidate version, currently `0.1.0`, for both conda and Python package metadata.
 
 To preview the checkout path and target environment without building or installing:
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-The source version is `0.1.0`. No public release has been published.
+The conda recipe's current candidate is `0.1.0`; Python package versions are derived from Git. No public release has been published.
 
 - Discover agent skills through installed conda package records, with header validation, duplicate-ownership detection, and filesystem containment checks.
 - Provide `conda skill list`, `status`, `install`, and `remove`, with source-environment selection and explicit project or home-directory destinations.
@@ -11,3 +11,5 @@ The source version is `0.1.0`. No public release has been published.
 - Add a Sphinx/MyST documentation site, a locally buildable example skill package, and contributor and release-preparation guides.
 - Add `conda skill init` to create authoring skeletons safely, and an interactive `quickstart` guide that requires explicit confirmation before writes.
 - Document conda-pypi installation in the environment owning conda.
+- Migrate development and release tooling from Pixi to conda-workspaces, with a root `conda.toml`, generated `conda.lock`, and separate environment installation and task execution.
+- Build with Hatchling and hatch-vcs, derive Python package versions from Git, and check release tags against the resolved version and the conda recipe candidate.
