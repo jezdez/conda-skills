@@ -2,22 +2,30 @@ schema_version: 1
 
 context:
   version: "0.1.0"
+  source_sha256: ${{ env.get("CONDA_SKILLS_SOURCE_SHA256", default="") }}
 
 package:
   name: conda-skills
   version: ${{ version }}
 
 source:
-  path: ..
+  - if: source_sha256 != ""
+    then:
+      url: https://pypi.org/packages/source/c/conda-skills/conda_skills-${{ version }}.tar.gz
+      sha256: ${{ source_sha256 }}
+    else:
+      path: ..
 
 build:
   number: 0
   noarch: python
   script:
-    env:
-      SETUPTOOLS_SCM_PRETEND_VERSION: ${{ version }}
-    content:
-      - python -m pip install . --no-deps --no-build-isolation
+    - if: source_sha256 == ""
+      then:
+        - if: win
+          then: set "SETUPTOOLS_SCM_PRETEND_VERSION=${{ version }}"
+          else: export SETUPTOOLS_SCM_PRETEND_VERSION="${{ version }}"
+    - python -m pip install . --no-deps --no-build-isolation
 
 requirements:
   host:

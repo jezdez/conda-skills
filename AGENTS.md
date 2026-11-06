@@ -199,8 +199,11 @@ conda task run -e build build
   building copied source without Git. Release checks compare the tag with the
   resolved Python version and recipe candidate; do not override their version.
   Follow `RELEASING.md`; version checks do not authorize tagging or publishing.
-- Pull requests run native tests and artifact/docs checks. Stable numeric tags
-  trigger the separately protected PyPI and jezdez/main publication workflows.
+- Pull requests run native tests and artifact/docs checks. Stable annotated tags
+  on main trigger coordinated PyPI and jezdez/main publication. Release conda
+  packages come from the digest-verified published source archive, not a rebuild
+  of the checkout. Sign and verify the exact artifacts before upload, preserve
+  channel overwrite checks, and publish the GitHub draft only after verification.
   Pin actions to full commit SHAs. Do not invent repository or documentation URLs.
   Never tag, push, configure credentials, or publish without explicit authorization.
 - Write PR and issue bodies with one line per paragraph or bullet. Keep commit

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Coordinate PyPI and conda publication with signed build provenance, verified CEP 27 publication evidence, and conda builds from the published source archive's exact digest.
+
 The conda recipe's current candidate is `0.1.0`; Python package versions are derived from Git. No public release has been published.
 
 - Discover agent skills through installed conda package records, with header validation, duplicate-ownership detection, and filesystem containment checks.
