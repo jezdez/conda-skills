@@ -10,7 +10,7 @@ The example package has already been built and installed in a temporary source e
 :alt: Terminal recording showing list, source review, install, status, and remove for the review-notes skill.
 ```
 
-Text equivalent, after installing a skill package in `../skills`:
+Text equivalent, after installing a skill package in `../skills`. The recording configures bat for color and no paging; the flags are explicit here so this works without that setup:
 
 ```sh
 conda skill list -p ../skills

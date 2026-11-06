@@ -11,4 +11,5 @@ Set TypingSpeed 40ms
 Set WaitTimeout 120s
 
 Env TERM "xterm-256color"
+Env COLORTERM "truecolor"
 Env BAT_THEME "Visual Studio Dark+"

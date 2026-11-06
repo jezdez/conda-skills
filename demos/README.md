@@ -4,7 +4,7 @@ These terminal recordings use [VHS](https://github.com/charmbracelet/vhs) and th
 
 ## Record locally
 
-Install VHS, its `ttyd`/browser dependencies, FFmpeg, [bat](https://github.com/sharkdp/bat), and JetBrains Mono using your platform's tools. Recording is tested on macOS; `setup.sh` requires Bash and a POSIX environment. These tools are not needed to build the documentation from the committed GIFs. File previews use bat's Visual Studio Dark+ theme with paging disabled.
+Install VHS, its `ttyd`/browser dependencies, FFmpeg, [bat](https://github.com/sharkdp/bat), and JetBrains Mono using your platform's tools. Recording is tested on macOS; `setup.sh` requires Bash and a POSIX environment. These tools are not needed to build the documentation from the committed GIFs. The prompt uses conda-workspaces' green accent; file previews use bat's Visual Studio Dark+ theme. The recording shell supplies color, plain-style, and no-paging flags so the visible command stays short.
 
 From the repository root:
 
@@ -17,6 +17,8 @@ vhs demos/quickstart.tape
 ```
 
 `setup.sh` creates a fresh temporary home and project, installs the local example package for the first demo, and removes that temporary directory when the recording shell exits. It does not alter your normal home or install packages into base. Build and environment setup are hidden from the recording and described on the demos page.
+
+The recording shell's `conda` command invokes the build environment's Python explicitly. This overrides any inherited alias or `conda init` function, so the demo does not accidentally use base's conda. Source the setup only in the disposable recording shell.
 
 - `_settings.tape`: shared appearance and timing.
 - `use-a-skill.tape`: list, review, install, status, and remove.

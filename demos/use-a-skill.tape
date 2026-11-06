@@ -18,7 +18,7 @@ Wait /\$/
 Sleep 2s
 Type "# Read the instructions before making them available to an agent"
 Enter
-Type "bat --paging=never --style=plain ../skills/share/agent-skills/review-notes/SKILL.md"
+Type "bat ../skills/share/agent-skills/review-notes/SKILL.md"
 Enter
 Wait /\$/
 Sleep 3s
