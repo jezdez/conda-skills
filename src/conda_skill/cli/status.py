@@ -11,7 +11,7 @@ from .output import print_table
 
 
 def execute(root: Path, backend: str) -> None:
-    """Inspect destination entries and print their state without source discovery."""
+    """Report files and links in the agent's skill directory, without source lookup."""
     entries = status(root, backend)
     if context.json:
         print(json.dumps(entries, ensure_ascii=True))

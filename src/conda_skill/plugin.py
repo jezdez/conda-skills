@@ -13,28 +13,22 @@ if TYPE_CHECKING:
 
 def configure_parser(parser: ArgumentParser) -> None:
     """Add skill subcommands and options without loading their implementations."""
-    from conda.cli.helpers import add_parser_json, add_parser_prefix
+    from .cli.parser import (
+        configure_init,
+        configure_install,
+        configure_list,
+        configure_quickstart,
+        configure_remove,
+        configure_status,
+    )
 
     subparsers = parser.add_subparsers(dest="skill_command", required=True)
-    for command in ("list", "status", "install", "remove"):
-        child = subparsers.add_parser(
-            command, help=f"{command.capitalize()} skill links."
-        )
-        add_parser_json(child)
-        if command != "status":
-            add_parser_prefix(child)
-        if command != "list":
-            child.add_argument(
-                "--backend", choices=("agents", "claude"), default="agents"
-            )
-            child.add_argument(
-                "--global",
-                dest="global_scope",
-                action="store_true",
-                help="Use your home directory instead of the current project.",
-            )
-        if command in ("install", "remove"):
-            child.add_argument("skill_name", help="Packaged skill directory name.")
+    configure_list(subparsers)
+    configure_status(subparsers)
+    configure_install(subparsers)
+    configure_remove(subparsers)
+    configure_init(subparsers)
+    configure_quickstart(subparsers)
 
 
 def run(args: Namespace) -> int:

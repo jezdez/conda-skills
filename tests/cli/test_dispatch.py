@@ -8,8 +8,13 @@ import pytest
 
 
 @pytest.mark.parametrize("backend", ["agents", "claude"])
-def test_installed_cli_roundtrip(prefix: Path, run_cli, backend: str) -> None:
-    listed = run_cli("list", "-p", str(prefix), "--json")
+@pytest.mark.parametrize("json_from_env", [False, True])
+def test_installed_cli_roundtrip(
+    prefix: Path, run_cli, backend: str, json_from_env: bool
+) -> None:
+    json_args = () if json_from_env else ("--json",)
+    env = {"CONDA_JSON": "true"} if json_from_env else None
+    listed = run_cli("list", "-p", str(prefix), *json_args, env=env)
     assert listed.returncode == 0, listed.stderr + listed.stdout
     assert json.loads(listed.stdout)[0]["name"] == "example"
     for _ in range(2):
@@ -20,26 +25,39 @@ def test_installed_cli_roundtrip(prefix: Path, run_cli, backend: str) -> None:
             str(prefix),
             "--backend",
             backend,
-            "--json",
+            *json_args,
+            env=env,
         )
         assert installed.returncode == 0, installed.stderr + installed.stdout
         assert Path(json.loads(installed.stdout)["path"]).is_symlink()
-    state = run_cli("status", "--backend", backend, "--json")
+    state = run_cli("status", "--backend", backend, *json_args, env=env)
     assert state.returncode == 0, state.stderr
     assert json.loads(state.stdout)[0]["state"] == "linked"
     removed = run_cli(
-        "remove", "example", "-p", str(prefix), "--backend", backend, "--json"
+        "remove",
+        "example",
+        "-p",
+        str(prefix),
+        "--backend",
+        backend,
+        *json_args,
+        env=env,
     )
     assert removed.returncode == 0, removed.stderr + removed.stdout
     assert json.loads(removed.stdout)["removed"] is True
     assert (prefix / "share/agent-skills/example/SKILL.md").is_file()
 
 
-def test_malformed_yaml_is_a_normal_cli_error(prefix: Path, run_cli) -> None:
+@pytest.mark.parametrize("json_from_env", [False, True])
+def test_malformed_yaml_is_a_normal_cli_error(
+    prefix: Path, run_cli, json_from_env: bool
+) -> None:
     (prefix / "share/agent-skills/example/SKILL.md").write_text(
         "---\nname: example\ndescription: [broken\n---\n", encoding="utf-8"
     )
-    result = run_cli("list", "-p", str(prefix), "--json")
+    json_args = () if json_from_env else ("--json",)
+    env = {"CONDA_JSON": "true"} if json_from_env else None
+    result = run_cli("list", "-p", str(prefix), *json_args, env=env)
     assert result.returncode != 0
     payload = json.loads(result.stdout)
     assert payload["exception_name"] == "CondaError"

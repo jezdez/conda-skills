@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def execute(skill: Skill, root: Path, backend: str) -> None:
-    """Remove a matching skill link and print whether a link was removed."""
+    """Remove a matching skill link and report the result."""
     removed = remove(skill, root, backend)
     if context.json:
         print(json.dumps({"name": skill.name, "removed": removed}, ensure_ascii=True))

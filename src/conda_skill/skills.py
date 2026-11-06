@@ -13,6 +13,10 @@ if TYPE_CHECKING:
     from conda.models.records import PrefixRecord
 
 SKILL_NAME_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+WINDOWS_DEVICE_NAMES = frozenset(
+    {"con", "prn", "aux", "nul"}
+    | {f"{prefix}{number}" for prefix in ("com", "lpt") for number in range(1, 10)}
+)
 
 
 @dataclass(frozen=True)
@@ -39,9 +43,7 @@ class Skill:
 
 def _validate_directory(path: Path, prefix: Path) -> None:
     """Reject invalid skill names and links escaping the environment or skill root."""
-    name = path.name
-    if not SKILL_NAME_PATTERN.fullmatch(name) or len(name) > 64:
-        raise ValueError(f"Invalid skill directory name: {name!r}")
+    validate_name(path.name)
     prefix = prefix.resolve()
     resolved = path.resolve()
     if not resolved.is_relative_to(prefix):
@@ -75,10 +77,25 @@ def _read_description(path: Path) -> str:
     if not isinstance(metadata, dict) or metadata.get("name") != path.name:
         raise ValueError(f"Skill name must match its directory: {path}")
     description = metadata.get("description")
+    return validate_description(description)
+
+
+def validate_name(name: str) -> None:
+    """Reject names that cannot identify a skill directory."""
+    if (
+        not SKILL_NAME_PATTERN.fullmatch(name)
+        or len(name) > 64
+        or name in WINDOWS_DEVICE_NAMES
+    ):
+        raise ValueError(f"Invalid skill directory name: {name!r}")
+
+
+def validate_description(description: object) -> str:
+    """Return a nonblank text description of at most 1024 characters."""
     if not isinstance(description, str) or not description.strip():
-        raise ValueError(f"Skill needs a text description: {path}")
+        raise ValueError("Skill needs a text description")
     if len(description) > 1024:
-        raise ValueError(f"Skill description exceeds 1024 characters: {path}")
+        raise ValueError("Skill description exceeds 1024 characters")
     return description
 
 

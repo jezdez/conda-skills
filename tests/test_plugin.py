@@ -44,6 +44,39 @@ def test_standard_argument_behavior(args: tuple[str, ...], code: int) -> None:
     assert error.value.code == code
 
 
+@pytest.mark.parametrize(
+    "command,terms",
+    [
+        ("list", ("package-owned", "source environment")),
+        ("status", ("destination", "entries")),
+        ("install", ("link", "packaged skill")),
+        ("remove", ("matching", "link")),
+        ("init", ("create", "skeleton")),
+        ("quickstart", ("interactive", "guide")),
+    ],
+)
+@pytest.mark.parametrize("overview", [True, False])
+def test_help_explains_command_meaning(
+    command: str, terms: tuple[str, ...], overview: bool, capsys
+) -> None:
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    with pytest.raises(SystemExit) as error:
+        parser.parse_args(["--help"] if overview else [command, "--help"])
+    assert error.value.code == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    text = " ".join(output.out.lower().split())
+    if overview:
+        text = next(
+            line.strip().lower()
+            for line in output.out.splitlines()
+            if line.strip().startswith(f"{command} ")
+        )
+    for term in terms:
+        assert term in text
+
+
 def test_installed_discovery() -> None:
     entry_points = [
         entry
@@ -79,7 +112,10 @@ if __name__ == "__main__":
     test_installed_discovery()
     for module in sys.modules:
         assert module not in {
-            "conda_skill.cli",
             "conda_skill.skills",
             "conda_skill.links",
-        } and not module.startswith("conda_skill.cli."), module
+            "conda_skill.scaffold",
+        } and (
+            not module.startswith("conda_skill.cli.")
+            or module == "conda_skill.cli.parser"
+        ), module

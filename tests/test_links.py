@@ -70,12 +70,13 @@ def test_redirected_destination_is_rejected(
     if operation is remove:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.symlink_to(skill.path, target_is_directory=True)
+        original_target = target.readlink()
     with pytest.raises(ValueError, match="Refusing redirected client directory"):
         operation(skill, project, "agents")
     assert redirected.is_symlink()
     if operation is remove:
         assert target.is_symlink()
-        assert target.readlink() == skill.path
+        assert target.readlink() == original_target
         assert (target / "SKILL.md").read_text() == "# Example\n"
     else:
         assert list(outside.iterdir()) == []

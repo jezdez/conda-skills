@@ -13,7 +13,7 @@ BACKENDS = {"agents": ".agents/skills", "claude": ".claude/skills"}
 def destination(root: Path, backend: str) -> Path:
     """Return the backend's skill directory under root without creating it.
 
-    Raise ValueError if a client-directory component redirects through a symlink.
+    Raise ValueError if any client directory redirects through a symlink.
     """
     root = root.resolve()
     path = root
@@ -25,7 +25,7 @@ def destination(root: Path, backend: str) -> Path:
 
 
 def install(skill: Skill, root: Path, backend: str) -> Path:
-    """Link the skill directory into the backend and return the destination.
+    """Create a skill symlink in the agent's directory and return its path.
 
     Reuse an existing link to the same source; reject all other conflicts.
     Use a relative target unless the source is on a different Windows drive.
@@ -46,7 +46,7 @@ def install(skill: Skill, root: Path, backend: str) -> Path:
 
 
 def remove(skill: Skill, root: Path, backend: str) -> bool:
-    """Unlink a matching destination without changing the source skill.
+    """Remove a matching symlink without changing the source skill.
 
     Return False if absent, True if removed, and raise ValueError for conflicts.
     """

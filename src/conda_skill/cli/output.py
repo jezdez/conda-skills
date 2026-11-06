@@ -11,7 +11,7 @@ TERMINAL_CONTROL_PATTERN = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def escape_terminal_controls(value: object) -> str:
-    """Render terminal control characters visibly in human-facing values."""
+    """Replace terminal control characters with visible hex escapes."""
     return TERMINAL_CONTROL_PATTERN.sub(
         lambda match: f"\\x{ord(match[0]):02x}",
         str(value),
@@ -19,7 +19,7 @@ def escape_terminal_controls(value: object) -> str:
 
 
 def print_table(columns: tuple[str, ...], rows: Iterable[Iterable[object]]) -> None:
-    """Print labeled rows as literal text with visible terminal controls."""
+    """Print a table with literal text and escaped terminal controls."""
     table = Table(show_edge=False, pad_edge=False)
     for column in columns:
         table.add_column(column)
