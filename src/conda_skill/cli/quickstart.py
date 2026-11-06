@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -46,7 +47,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         if action == "cancel":
             console.print("Cancelled. No changes made.")
             return
-        selected = None
+        backend = None
+        perform: Callable[[Path], None]
         if action == "link":
             skills = load_skills()
             if not skills:
@@ -62,6 +64,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 console=console,
             )
             selected = skills[int(choice) - 1]
+            name = selected.name
+            description = selected.description
             console.print(f"Review source: {escape_terminal_controls(selected.path)}")
             console.print(
                 f"Description: {escape_terminal_controls(selected.description)}"
@@ -73,6 +77,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             backend = Prompt.ask(
                 "Backend", choices=list(BACKENDS), default="agents", console=console
             )
+            perform = partial(install, selected, backend=backend)
         else:
             name = Prompt.ask("Skill name", console=console)
             description = Prompt.ask(
@@ -80,6 +85,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             )
             validate_name(name)
             validate_description(description)
+            perform = partial(init, name, description)
         console.print(
             "Home-directory changes require starting quickstart with --global."
         )
@@ -93,8 +99,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             raise ValueError(
                 "Use --global explicitly when changing skills in your home directory"
             )
-        if selected is not None:
-            target = destination(root, backend) / selected.name
+        if backend is not None:
+            target = destination(root, backend) / name
             console.print(f"Link destination: {escape_terminal_controls(target)}")
         else:
             console.print(f"Create skeleton: {escape_terminal_controls(root / name)}")
@@ -107,7 +113,5 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         return
     if not confirmed:
         console.print("Cancelled. No changes made.")
-    elif selected is not None:
-        install(selected, root, backend)
     else:
-        init(name, description, root)
+        perform(root)

@@ -28,3 +28,6 @@ select = ["E", "F", "I", "UP"]
 
 [tool.ruff]
 target-version = "py311"
+
+[tool.ty.rules]
+possibly-unresolved-reference = "error"
