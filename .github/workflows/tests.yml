@@ -33,6 +33,14 @@ jobs:
       - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
       - run: conda workspace install --locked -e ${{ matrix.environment }}
       - run: conda task run -e ${{ matrix.environment }} check
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: coverage-${{ matrix.os }}-${{ matrix.environment }}
+          path: |
+            coverage.xml
+            htmlcov/
+          if-no-files-found: warn
 
   artifacts:
     runs-on: ubuntu-latest

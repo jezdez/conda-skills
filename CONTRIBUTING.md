@@ -14,6 +14,8 @@ conda task run -e default check
 
 The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, and ty. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
 
+The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, and prek belong to `dev`; pytest and coverage belong to `test`. The `docs` and `build` environments include only their own tooling and shared runtime dependencies. Hatchling and hatch-vcs are included in both test and build environments because editable installation and release-version tests need them too.
+
 For use with your usual conda executable, follow the checkout instructions in `docs/how-to/installation.md`, which use `conda-pypi` and an explicit target environment. The workspace's check and build environments are separate from that installation. Validate installation examples in disposable environments, not a shared base environment.
 
 `--locked` belongs to `conda workspace install`, not `conda task run`. Tasks run named commands from the manifest. To run an arbitrary command in an installed environment, use `conda workspace run -e ENV -- COMMAND`.
@@ -36,6 +38,8 @@ conda task run -e py314 check
 ```
 
 Use `conda task run -e default format` to apply the project's formatter after installing the default environment. When changing dependency or workspace metadata, run `conda workspace lock` and include the regenerated `conda.lock`. Do not edit the lockfile by hand.
+
+Pytest measures line and branch coverage, including CLI subprocesses. The normal `check` task requires at least 95% combined coverage and writes `coverage.xml` and an HTML report at `htmlcov/index.html`. Generated version metadata is excluded. CI retains a report for each operating system and Python version. For a focused diagnostic run without coverage, use `pytest --no-cov`; run the complete check before submitting changes.
 
 To install local commit hooks, run `conda task run -e default install-hooks`. Run them explicitly with `conda task run -e default prek`.
 

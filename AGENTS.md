@@ -66,6 +66,9 @@
 - Use `from __future__ import annotations` and modern annotations such as
   `str | None` and `list[str]`. Support Python 3.11 and newer.
 - Use Ruff for linting and formatting, and ty for source type checking.
+- Pytest-cov measures branches and subprocess execution in the normal test run.
+  Keep combined coverage at or above 95%; exclude generated version metadata only.
+  Review uncovered behavior rather than treating the percentage as proof of correctness.
 
 ## Conda integration and safety
 
@@ -167,6 +170,9 @@ conda task run -e build build
   commands in an installed environment.
 - Run `conda workspace lock` after dependency or workspace metadata changes and
   keep the generated `conda.lock` with those changes. Do not hand-edit the lockfile.
+- Keep runtime dependencies shared; put lint tools in `dev`, pytest and coverage
+  in `test`, and documentation and artifact tools in their own features. Test and
+  build environments also need the backend dependencies for editable installation.
 - Report checks actually run. Locked Linux, macOS ARM64, and Windows environments
   do not establish native-platform test coverage; report native runs separately.
 - Do not claim CI, publication, or agent-client discovery from local test results.

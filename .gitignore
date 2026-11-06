@@ -11,3 +11,7 @@ conda-dist/
 docs/_build/
 .DS_Store
 src/conda_skill/_version.py
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

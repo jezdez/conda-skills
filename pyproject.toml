@@ -38,7 +38,18 @@ exclude = ["/docs/_build"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --cov --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html:htmlcov"
+
+[tool.coverage.run]
+source = ["conda_skill"]
+branch = true
+patch = ["subprocess"]
+omit = ["*/conda_skill/_version.py"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+fail_under = 95
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
