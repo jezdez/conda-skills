@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -12,6 +11,8 @@ from ruamel.yaml.error import YAMLError
 
 if TYPE_CHECKING:
     from conda.models.records import PrefixRecord
+
+SKILL_NAME_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
 @dataclass(frozen=True)
@@ -31,40 +32,54 @@ class Skill:
         The caller establishes package ownership; prefix bounds the skill root,
         while companion files must remain inside that root.
         """
-        name = path.name
-        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name) or len(name) > 64:
-            raise ValueError(f"Invalid skill directory name: {name!r}")
-        prefix = prefix.resolve()
-        resolved = path.resolve()
-        header = path / "SKILL.md"
-        if not resolved.is_relative_to(prefix):
-            raise ValueError(f"Skill escapes environment: {path}")
-        if not header.resolve().is_relative_to(prefix):
-            raise ValueError(f"Skill escapes environment: {path}")
-        # Link entire folders, so reject external redirects in their contents too.
-        for child in path.rglob("*"):
-            if not child.resolve().is_relative_to(resolved):
-                raise ValueError(f"Skill contains an escaping link: {child}")
+        _validate_directory(path, prefix)
+        description = _read_description(path)
+        return cls(path.name, description, path, record.name, record.version)
 
-        lines = header.read_text(encoding="utf-8").split("\n")
-        if lines[0] != "---":
-            raise ValueError(f"Missing YAML frontmatter: {header}")
-        try:
-            end = lines.index("---", 1)
-        except ValueError:
-            raise ValueError(f"Missing YAML frontmatter: {header}") from None
-        try:
-            metadata = yaml.load(io.StringIO("\n".join(lines[1:end])))
-        except YAMLError as exc:
-            raise ValueError(f"Invalid skill YAML in {header}: {exc}") from exc
-        if not isinstance(metadata, dict) or metadata.get("name") != name:
-            raise ValueError(f"Skill name must match its directory: {path}")
-        description = metadata.get("description")
-        if not isinstance(description, str) or not description.strip():
-            raise ValueError(f"Skill needs a text description: {path}")
-        if len(description) > 1024:
-            raise ValueError(f"Skill description exceeds 1024 characters: {path}")
-        return cls(name, description, path, record.name, record.version)
+
+def _validate_directory(path: Path, prefix: Path) -> None:
+    """Reject invalid skill names and links escaping the environment or skill root."""
+    name = path.name
+    if not SKILL_NAME_PATTERN.fullmatch(name) or len(name) > 64:
+        raise ValueError(f"Invalid skill directory name: {name!r}")
+    prefix = prefix.resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(prefix):
+        raise ValueError(f"Skill escapes environment: {path}")
+    if not (path / "SKILL.md").resolve().is_relative_to(prefix):
+        raise ValueError(f"Skill escapes environment: {path}")
+    # Link entire folders, so reject external redirects in their contents too.
+    for child in path.rglob("*"):
+        if not child.resolve().is_relative_to(resolved):
+            raise ValueError(f"Skill contains an escaping link: {child}")
+
+
+def _read_description(path: Path) -> str:
+    """Read SKILL.md and return its description after validating the frontmatter.
+
+    Require a matching name and a nonempty description of at most 1024 characters.
+    Raise ValueError for missing frontmatter, malformed YAML, or invalid metadata.
+    """
+    header = path / "SKILL.md"
+    lines = header.read_text(encoding="utf-8").split("\n")
+    if lines[0] != "---":
+        raise ValueError(f"Missing YAML frontmatter: {header}")
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        raise ValueError(f"Missing YAML frontmatter: {header}") from None
+    try:
+        metadata = yaml.loads("\n".join(lines[1:end]))
+    except YAMLError as exc:
+        raise ValueError(f"Invalid skill YAML in {header}: {exc}") from exc
+    if not isinstance(metadata, dict) or metadata.get("name") != path.name:
+        raise ValueError(f"Skill name must match its directory: {path}")
+    description = metadata.get("description")
+    if not isinstance(description, str) or not description.strip():
+        raise ValueError(f"Skill needs a text description: {path}")
+    if len(description) > 1024:
+        raise ValueError(f"Skill description exceeds 1024 characters: {path}")
+    return description
 
 
 def discover(prefix: Path) -> list[Skill]:

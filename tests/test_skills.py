@@ -21,12 +21,62 @@ def test_package_owned_discovery(prefix: Path) -> None:
     assert skill.description == "Example: useful guidance"
 
 
-def test_invalid_metadata_rejected(prefix: Path) -> None:
+@pytest.mark.parametrize(
+    "metadata,message",
+    [
+        ({"name": "other", "description": "Guidance"}, "name must match"),
+        ({"name": "example"}, "text description"),
+        ({"name": "example", "description": ""}, "text description"),
+        ({"name": "example", "description": " \t\n"}, "text description"),
+        ({"name": "example", "description": 42}, "text description"),
+        ({"name": "example", "description": "x" * 1025}, "exceeds 1024"),
+    ],
+    ids=["mismatched-name", "missing", "empty", "blank", "non-string", "too-long"],
+)
+def test_invalid_metadata_rejected(prefix: Path, metadata: dict, message: str) -> None:
     (prefix / "share/agent-skills/example/SKILL.md").write_text(
-        "---\nname: ../escape\ndescription: No\n---\n", encoding="utf-8"
+        f"---\n{json.dumps(metadata)}\n---\n", encoding="utf-8"
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=message):
         discover(prefix)
+
+
+@pytest.mark.parametrize("length", [1, 1024])
+def test_description_length_boundaries(prefix: Path, length: int) -> None:
+    description = "x" * length
+    (prefix / "share/agent-skills/example/SKILL.md").write_text(
+        f"---\nname: example\ndescription: {description}\n---\n", encoding="utf-8"
+    )
+    [skill] = discover(prefix)
+    assert skill.description == description
+
+
+@pytest.mark.parametrize(
+    "name,valid",
+    [
+        ("a", True),
+        ("a" * 64, True),
+        ("skill-2", True),
+        ("a" * 65, False),
+        ("Uppercase", False),
+        ("under_score", False),
+        ("-leading", False),
+        ("trailing-", False),
+        ("double--hyphen", False),
+    ],
+)
+def test_skill_directory_names(prefix: Path, name: str, valid: bool) -> None:
+    path = prefix / "share/agent-skills" / name
+    path.mkdir()
+    (path / "SKILL.md").write_text(
+        f"---\nname: {name}\ndescription: Guidance\n---\n", encoding="utf-8"
+    )
+    [record] = PrefixData(prefix, interoperability=False).iter_records()
+    if valid:
+        assert Skill.from_directory(path, record, prefix=prefix).name == name
+    else:
+        with pytest.raises(ValueError, match="Invalid skill directory name"):
+            Skill.from_directory(path, record, prefix=prefix)
 
 
 def test_external_skill_root_with_internal_header(prefix: Path, tmp_path: Path) -> None:
