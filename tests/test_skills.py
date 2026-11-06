@@ -159,3 +159,25 @@ def test_frontmatter_delimiters_required(prefix: Path, text: str) -> None:
     (prefix / "share/agent-skills/example/SKILL.md").write_text(text, encoding="utf-8")
     with pytest.raises(ValueError, match="Missing YAML frontmatter"):
         discover(prefix)
+
+
+@pytest.mark.parametrize("location", ["root", "header", "reference"])
+@pytest.mark.parametrize("mutual", [False, True], ids=["self", "mutual"])
+def test_discovery_rejects_symlink_cycles(
+    prefix: Path, location: str, mutual: bool
+) -> None:
+    path = prefix / "share/agent-skills/example"
+    if location == "root":
+        shutil.rmtree(path)
+    else:
+        path = path / ("SKILL.md" if location == "header" else "references/example.md")
+        path.unlink()
+    path.symlink_to(
+        "cycle-peer" if mutual else path.name, target_is_directory=location == "root"
+    )
+    if mutual:
+        path.with_name("cycle-peer").symlink_to(
+            path.name, target_is_directory=location == "root"
+        )
+    with pytest.raises(ValueError, match="Cannot resolve skill"):
+        discover(prefix)

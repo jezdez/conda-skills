@@ -32,7 +32,7 @@ def test_link_roundtrip(skill: Skill, tmp_path: Path) -> None:
     assert skill.path.is_dir()
 
 
-@pytest.mark.parametrize("kind", ["directory", "file", "foreign", "broken"])
+@pytest.mark.parametrize("kind", ["directory", "file", "foreign", "broken", "cycle"])
 def test_conflicts_are_preserved(skill: Skill, tmp_path: Path, kind: str) -> None:
     target = tmp_path / ".agents/skills/example"
     target.parent.mkdir(parents=True)
@@ -40,6 +40,8 @@ def test_conflicts_are_preserved(skill: Skill, tmp_path: Path, kind: str) -> Non
         target.mkdir()
     elif kind == "file":
         target.write_text("keep", encoding="utf-8")
+    elif kind == "cycle":
+        target.symlink_to(target.name, target_is_directory=True)
     else:
         foreign = tmp_path / "foreign"
         if kind == "foreign":
@@ -102,3 +104,36 @@ def test_status_reports_broken_links(tmp_path: Path, kind: str) -> None:
         }
     ]
     assert target.is_symlink()
+
+
+@pytest.mark.parametrize("mutual", [False, True], ids=["self", "mutual"])
+def test_status_preserves_cyclic_links(tmp_path: Path, mutual: bool) -> None:
+    directory = tmp_path / ".agents/skills"
+    directory.mkdir(parents=True)
+    (directory / "loop").symlink_to(
+        "other" if mutual else "loop", target_is_directory=True
+    )
+    if mutual:
+        (directory / "other").symlink_to("loop", target_is_directory=True)
+    (directory / "unmanaged").mkdir()
+    entries = {entry["name"]: entry for entry in status(tmp_path, "agents")}
+    for name in ("loop", "other") if mutual else ("loop",):
+        assert entries[name]["state"] == "broken"
+        assert entries[name]["target"] == str((directory / name).readlink())
+        assert (directory / name).is_symlink()
+    assert entries["unmanaged"]["state"] == "unmanaged"
+
+
+def test_status_preserves_cycle_after_missing_component(tmp_path: Path) -> None:
+    directory = tmp_path / ".agents/skills"
+    directory.mkdir(parents=True)
+    (directory / "loop").symlink_to("loop", target_is_directory=True)
+    entry = directory / "entry"
+    entry.symlink_to("missing/../loop", target_is_directory=True)
+    entries = {entry["name"]: entry for entry in status(tmp_path, "agents")}
+    assert entries["entry"]["state"] == "broken"
+    assert entries["entry"]["target"] in {
+        str(entry.readlink()),
+        str(directory / "loop"),
+    }
+    assert entries["loop"]["state"] == "broken"

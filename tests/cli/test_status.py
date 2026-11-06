@@ -42,3 +42,14 @@ def test_status_survives_deleted_source(prefix: Path, tmp_path: Path, run_cli) -
     assert json.loads(result.stdout) == [
         {"name": "example", "state": "broken", "path": target, "target": source}
     ]
+
+
+def test_status_json_preserves_cycle(tmp_path: Path, run_cli) -> None:
+    path = tmp_path / ".agents/skills/loop"
+    path.parent.mkdir(parents=True)
+    path.symlink_to("loop", target_is_directory=True)
+    result = run_cli("status", "--json")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert json.loads(result.stdout) == [
+        {"name": "loop", "state": "broken", "path": str(path), "target": "loop"}
+    ]

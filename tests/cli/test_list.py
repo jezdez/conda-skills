@@ -30,3 +30,14 @@ def test_package_text_is_literal_and_json_is_unchanged(
     assert "\x1b" not in result
     structured = render_cli("list", "-p", str(prefix), "--json")
     assert json.loads(structured)[0]["description"] == description
+
+
+def test_list_cycle_is_normal_json_error(prefix: Path, run_cli) -> None:
+    path = prefix / "share/agent-skills/example/references/loop"
+    path.symlink_to("loop")
+    result = run_cli("list", "-p", str(prefix), "--json")
+    assert result.returncode != 0
+    payload = json.loads(result.stdout)
+    assert payload["exception_name"] == "CondaError"
+    assert "Cannot resolve skill" in payload["error"]
+    assert "traceback" not in payload

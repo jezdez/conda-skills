@@ -32,7 +32,11 @@ def install(skill: Skill, root: Path, backend: str) -> Path:
     """
     directory = destination(root, backend)
     target = directory / skill.name
-    if target.is_symlink() and target.resolve() == skill.path.resolve():
+    if (
+        target.is_symlink()
+        and target.exists()
+        and target.resolve() == skill.path.resolve()
+    ):
         return target
     if target.exists() or target.is_symlink():
         raise ValueError(f"Refusing to replace existing destination: {target}")
@@ -53,7 +57,11 @@ def remove(skill: Skill, root: Path, backend: str) -> bool:
     target = destination(root, backend) / skill.name
     if not target.exists() and not target.is_symlink():
         return False
-    if not target.is_symlink() or target.resolve() != skill.path.resolve():
+    if (
+        not target.is_symlink()
+        or not target.exists()
+        or target.resolve() != skill.path.resolve()
+    ):
         raise ValueError(f"Refusing to remove unrelated destination: {target}")
     target.unlink()
     return True
@@ -76,7 +84,14 @@ def status(root: Path, backend: str) -> list[dict[str, str]]:
                 if path.is_dir() and (path / "SKILL.md").is_file()
                 else "broken"
             )
-            target = str(path.resolve())
+            try:
+                try:
+                    target = str(path.resolve(strict=True))
+                except FileNotFoundError:
+                    target = str(path.resolve())
+            except (OSError, RuntimeError):
+                # Python 3.11 raises RuntimeError for cycles; newer Python uses OSError.
+                state, target = "broken", str(path.readlink())
         else:
             state, target = "unmanaged", ""
         result.append(

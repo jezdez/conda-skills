@@ -134,16 +134,19 @@ def _validate_metadata(name: str, description: str) -> None:
 
 def _validate_directory(path: Path, prefix: Path) -> None:
     """Reject links escaping the environment or skill root before reading files."""
-    prefix = prefix.resolve()
-    resolved = path.resolve()
-    if not resolved.is_relative_to(prefix):
-        raise ValueError(f"Skill escapes environment: {path}")
-    if not (path / "SKILL.md").resolve().is_relative_to(prefix):
-        raise ValueError(f"Skill escapes environment: {path}")
-    # Link entire folders, so reject external redirects in their contents too.
-    for child in path.rglob("*"):
-        if not child.resolve().is_relative_to(resolved):
-            raise ValueError(f"Skill contains an escaping link: {child}")
+    try:
+        prefix = prefix.resolve(strict=True)
+        resolved = path.resolve(strict=True)
+        if not resolved.is_relative_to(prefix):
+            raise ValueError(f"Skill escapes environment: {path}")
+        if not (path / "SKILL.md").resolve(strict=True).is_relative_to(prefix):
+            raise ValueError(f"Skill escapes environment: {path}")
+        # Link entire folders, so reject external redirects in their contents too.
+        for child in path.rglob("*"):
+            if not child.resolve(strict=True).is_relative_to(resolved):
+                raise ValueError(f"Skill contains an escaping link: {child}")
+    except (OSError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve skill files in {path}: {exc}") from exc
 
 
 def discover(prefix: Path) -> list[Skill]:
