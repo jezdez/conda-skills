@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import tomllib
 from datetime import date
 from pathlib import Path
 
 from conda.common.serialize import yaml
+from hatchling.metadata.core import ProjectMetadata
+from hatchling.plugin.manager import PluginManager
 
 
 def main() -> None:
@@ -16,13 +17,13 @@ def main() -> None:
     parser.add_argument("version", help="Bare version, for example 0.1.0 (without v).")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    version = ProjectMetadata(str(root), PluginManager()).version
     recipe = yaml.loads((root / "recipe/recipe.yaml").read_text(encoding="utf-8"))
-    if (
-        args.version != project["project"]["version"]
-        or args.version != recipe["context"]["version"]
-    ):
-        parser.error("Tag, pyproject.toml, and recipe version must match exactly.")
+    if args.version != version or args.version != recipe["context"]["version"]:
+        parser.error(
+            f"Tag, resolved package version ({version}), and recipe version "
+            "must match exactly."
+        )
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     heading = next(
         (

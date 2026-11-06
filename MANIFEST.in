@@ -1,8 +1,0 @@
-include tests/conftest.py
-recursive-include tests/cli *.py
-recursive-include docs *.md *.py *.yaml
-prune docs/_build
-recursive-include scripts *.py
-include recipe/recipe.yaml
-include CONTRIBUTING.md RELEASING.md CHANGELOG.md
-include AGENTS.md pixi.toml pixi.lock

@@ -14,13 +14,17 @@ build:
   number: 0
   noarch: python
   script:
-    - python -m pip install . --no-deps --no-build-isolation
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION: ${{ version }}
+    content:
+      - python -m pip install . --no-deps --no-build-isolation
 
 requirements:
   host:
     - python 3.11.*
     - pip
-    - setuptools >=77.0.3
+    - hatchling >=1.27
+    - hatch-vcs >=0.4
   run:
     - python >=3.11
     - conda >=26.9

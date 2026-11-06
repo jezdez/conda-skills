@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash -el {0}
+
 jobs:
   tests:
     name: ${{ matrix.os }} / ${{ matrix.environment }}
@@ -19,32 +23,51 @@ jobs:
         environment: [py311, py314]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
         with:
-          environments: ${{ matrix.environment }}
-      - run: pixi run --locked -e ${{ matrix.environment }} check
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e ${{ matrix.environment }}
+      - run: conda task run -e ${{ matrix.environment }} check
 
   artifacts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
         with:
-          environments: build docs
-      - run: pixi run --locked -e build build
-      - run: pixi run --locked -e build check-dist
-      - run: pixi run --locked -e build check-workflows
-      - run: pixi run --locked -e build test-wheel
-      - run: pixi run --locked -e build build-conda
-      - run: pixi run --locked -e build test-example
-      - run: pixi run --locked -e docs docs
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
+      - run: conda workspace install --locked -e docs
+      - run: conda task run -e build build
+      - run: conda task run -e build check-dist
+      - run: conda task run -e build check-workflows
+      - run: conda task run -e build test-wheel
+      - run: conda task run -e build build-conda
+      - run: conda task run -e build test-example
+      - run: conda task run -e docs docs
 
   windows-example:
     name: Build and install generated skills on Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
         with:
-          environments: build
-      - run: pixi run --locked -e build test-example
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
+      - run: conda task run -e build test-example

@@ -5,11 +5,12 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+        exclude: ^conda\.lock$
   - repo: local
     hooks:
       - id: check
         name: Plugin checks
-        entry: pixi run --locked check
+        entry: conda task run -e default check
         language: system
         pass_filenames: false
         always_run: true

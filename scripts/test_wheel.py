@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
@@ -11,8 +12,20 @@ from pathlib import Path
 
 def main() -> None:
     """Test an installed wheel using conda dependencies from the build environment."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "wheel",
+        nargs="?",
+        type=Path,
+        help="Wheel to test; otherwise require exactly one in dist.",
+    )
+    args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    wheels = list((root / "dist").glob("conda_skills-*.whl"))
+    wheels = (
+        [args.wheel.resolve()]
+        if args.wheel
+        else list((root / "dist").glob("conda_skills-*.whl"))
+    )
     if len(wheels) != 1:
         raise SystemExit(
             "Expected exactly one conda-skills wheel in dist; "

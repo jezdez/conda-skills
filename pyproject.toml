@@ -1,23 +1,40 @@
 [build-system]
-requires = ["setuptools>=77.0.3"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.27", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
 
 [project]
 name = "conda-skills"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Link conda-packaged agent skills into client directories"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-# Conda is provisioned through conda channels, not PyPI; see pixi.toml and recipe/.
+# Conda is provisioned through conda channels, not PyPI; see conda.toml and recipe/.
 dependencies = ["ruamel.yaml>=0.11.14,<0.20", "rich>=13"]
 
 [project.entry-points.conda]
 conda-skills = "conda_skill.plugin"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+fallback_version = "0.1.0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/conda_skill/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/conda_skill"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src", "/tests", "/docs", "/scripts", "/recipe",
+  "/pyproject.toml", "/conda.toml", "/conda.lock", "/LICENSE", "/README.md",
+  "/AGENTS.md", "/CONTRIBUTING.md", "/RELEASING.md", "/CHANGELOG.md",
+]
+exclude = ["/docs/_build"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -28,6 +45,10 @@ select = ["E", "F", "I", "UP"]
 
 [tool.ruff]
 target-version = "py311"
+extend-exclude = ["src/conda_skill/_version.py"]
+
+[tool.ty.src]
+exclude = ["src/conda_skill/_version.py"]
 
 [tool.ty.rules]
 possibly-unresolved-reference = "error"

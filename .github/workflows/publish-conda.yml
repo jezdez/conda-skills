@@ -29,7 +29,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     defaults:
       run:
-        shell: bash
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,16 +48,17 @@ jobs:
             echo "The checked-out commit does not match the release tag." >&2
             exit 1
           fi
-      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
-          environments: build
-          pixi-version: v0.77.0
-          frozen: true
-          cache: true
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
       - name: Validate static release metadata
-        run: pixi run --locked -e build python scripts/check_release.py "$RELEASE_TAG"
+        run: conda task run -e build check-release "$RELEASE_TAG"
       - name: Build exact package
-        run: pixi run --locked -e build build-conda
+        run: conda task run -e build build-conda
       - name: Validate unpublished package
         run: |
           set -euo pipefail
@@ -70,7 +71,7 @@ jobs:
           fi
 
           metadata="$(
-            pixi run --locked -e build \
+            conda workspace run -e build -- \
               rattler-build package inspect --json "${packages[0]}"
           )"
           jq -se --arg version "$RELEASE_TAG" '
@@ -105,7 +106,7 @@ jobs:
             exit 1
           fi
           unset ANACONDA_FORCE ANACONDA_SERVER_URL
-          pixi upload --no-config anaconda \
+          conda workspace run -e build -- rattler-build upload --no-config anaconda \
             --owner jezdez \
             --channel main \
             "$PACKAGE"
@@ -117,7 +118,7 @@ jobs:
           expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
           expected_size="$(stat -c '%s' "$PACKAGE")"
           metadata="$(
-            pixi run --locked -e build \
+            conda workspace run -e build -- \
               rattler-build package inspect --json "$PACKAGE"
           )"
           build="$(jq -r '.index.build' <<< "$metadata")"

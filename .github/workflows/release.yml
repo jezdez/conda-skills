@@ -7,6 +7,10 @@ on:
 
 permissions: {}
 
+defaults:
+  run:
+    shell: bash -el {0}
+
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
@@ -22,11 +26,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
-          environments: build docs py311 py314
-          pixi-version: v0.77.0
-          frozen: true
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
+      - run: conda workspace install --locked -e docs
+      - run: conda workspace install --locked -e py311
+      - run: conda workspace install --locked -e py314
       - name: Validate exact release tag
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -34,13 +43,13 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test "$(git describe --tags --exact-match HEAD)" = "$RELEASE_TAG"
-          pixi run --locked -e build check-release "$RELEASE_TAG"
-      - run: pixi run --locked -e py311 check
-      - run: pixi run --locked -e py314 check
-      - run: pixi run --locked -e docs docs
-      - run: pixi run --locked -e build build
-      - run: pixi run --locked -e build check-dist
-      - run: pixi run --locked -e build test-wheel
+          conda task run -e build check-release "$RELEASE_TAG"
+      - run: conda task run -e py311 check
+      - run: conda task run -e py314 check
+      - run: conda task run -e docs docs
+      - run: conda task run -e build build
+      - run: conda task run -e build check-dist
+      - run: conda task run -e build test-wheel
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist

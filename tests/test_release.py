@@ -8,16 +8,27 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
-def release_tree(tmp_path: Path) -> Path:
+@pytest.fixture(params=["static", "vcs"])
+def release_tree(tmp_path: Path, request, monkeypatch) -> Path:
     """Create a release fixture independent of the checkout's unreleased notes."""
     (tmp_path / "scripts").mkdir()
     script = tmp_path / "scripts/check_release.py"
     shutil.copyfile(Path(__file__).parents[1] / "scripts/check_release.py", script)
     (tmp_path / "recipe").mkdir()
-    (tmp_path / "pyproject.toml").write_text(
-        '[project]\nversion = "0.1.0"\n', encoding="utf-8"
+    monkeypatch.delenv("SETUPTOOLS_SCM_PRETEND_VERSION", raising=False)
+    monkeypatch.delenv(
+        "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RELEASE_FIXTURE", raising=False
     )
+    metadata = '[project]\nname = "release-fixture"\n'
+    if request.param == "vcs":
+        metadata += (
+            'dynamic = ["version"]\n'
+            '[tool.hatch.version]\nsource = "vcs"\n'
+            '[tool.hatch.version.raw-options]\nfallback_version = "0.1.0"\n'
+        )
+    else:
+        metadata += 'version = "0.1.0"\n'
+    (tmp_path / "pyproject.toml").write_text(metadata, encoding="utf-8")
     (tmp_path / "recipe/recipe.yaml").write_text(
         'context:\n  version: "0.1.0"\n', encoding="utf-8"
     )
@@ -56,6 +67,18 @@ def test_release_metadata_matches(release_tree: Path, monkeypatch, capsys) -> No
 def test_release_recipe_version_must_match(release_tree: Path, monkeypatch) -> None:
     (release_tree.parents[1] / "recipe/recipe.yaml").write_text(
         'context:\n  version: "0.2.0"\n', encoding="utf-8"
+    )
+    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(release_tree), run_name="__main__")
+    assert error.value.code == 2
+
+
+def test_release_package_version_must_match(release_tree: Path, monkeypatch) -> None:
+    project = release_tree.parents[1] / "pyproject.toml"
+    project.write_text(
+        project.read_text(encoding="utf-8").replace('"0.1.0"', '"0.2.0"'),
+        encoding="utf-8",
     )
     monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
     with pytest.raises(SystemExit) as error:
