@@ -66,7 +66,7 @@ def test_quickstart_links_reviewed_package_skill(
     target = tmp_path / f".{backend}/skills/example"
     assert target.is_symlink()
     assert target.resolve() == prefix / "share/agent-skills/example"
-    assert str(prefix / "share/agent-skills/example") in output
+    assert str(prefix / "share/agent-skills/example") in output.replace("\n", "")
     assert "Example: useful guidance" in output
     assert "Review" in output and "trust" in output
 

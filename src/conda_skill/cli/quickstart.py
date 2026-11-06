@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from functools import partial
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from ..links import BACKENDS, destination
-from ..skills import validate_description, validate_name
+from ..skills import _validate_metadata
 from .init import execute as init
 from .install import execute as install
 from .output import escape_terminal_controls
@@ -19,6 +19,18 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from ..skills import Skill
+
+
+@dataclass(frozen=True)
+class SkillSelection:
+    """An installed skill and the backend chosen for its link."""
+
+    skill: Skill
+    backend: str
+
+    def destination(self, root: Path) -> Path:
+        """Return the proposed link path after checking client directories."""
+        return destination(root, self.backend) / self.skill.name
 
 
 def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> None:
@@ -47,8 +59,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         if action == "cancel":
             console.print("Cancelled. No changes made.")
             return
-        backend = None
-        perform: Callable[[Path], None]
+        selection: SkillSelection | tuple[str, str]
         if action == "link":
             skills = load_skills()
             if not skills:
@@ -64,8 +75,6 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 console=console,
             )
             selected = skills[int(choice) - 1]
-            name = selected.name
-            description = selected.description
             console.print(f"Review source: {escape_terminal_controls(selected.path)}")
             console.print(
                 f"Description: {escape_terminal_controls(selected.description)}"
@@ -77,15 +86,14 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             backend = Prompt.ask(
                 "Backend", choices=list(BACKENDS), default="agents", console=console
             )
-            perform = partial(install, selected, backend=backend)
+            selection = SkillSelection(selected, backend)
         else:
             name = Prompt.ask("Skill name", console=console)
             description = Prompt.ask(
                 "Description (when to use this skill)", console=console
             )
-            validate_name(name)
-            validate_description(description)
-            perform = partial(init, name, description)
+            _validate_metadata(name, description)
+            selection = (name, description)
         console.print(
             "Home-directory changes require starting quickstart with --global."
         )
@@ -99,10 +107,11 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
             raise ValueError(
                 "Use --global explicitly when changing skills in your home directory"
             )
-        if backend is not None:
-            target = destination(root, backend) / name
+        if isinstance(selection, SkillSelection):
+            target = selection.destination(root)
             console.print(f"Link destination: {escape_terminal_controls(target)}")
         else:
+            name, description = selection
             console.print(f"Create skeleton: {escape_terminal_controls(root / name)}")
             console.print(f"Description: {escape_terminal_controls(description)}")
         confirmed = Confirm.ask(
@@ -113,5 +122,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         return
     if not confirmed:
         console.print("Cancelled. No changes made.")
+    elif isinstance(selection, SkillSelection):
+        install(selection.skill, root, selection.backend)
     else:
-        perform(root)
+        init(*selection, root)

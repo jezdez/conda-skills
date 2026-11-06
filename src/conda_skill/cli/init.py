@@ -6,13 +6,13 @@ from pathlib import Path
 from conda.base.context import context
 from rich.console import Console
 
-from ..scaffold import DEFAULT_DESCRIPTION, create
+from ..skills import DEFAULT_DESCRIPTION, Skill
 from .output import escape_terminal_controls
 
 
 def execute(name: str, description: str | None, root: Path) -> None:
     """Create an authoring skeleton and report paths and remaining author tasks."""
-    path = create(
+    path = Skill.create_skeleton(
         name, DEFAULT_DESCRIPTION if description is None else description, root
     )
     recipe = path / "recipe/recipe.yaml"
