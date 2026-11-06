@@ -46,7 +46,8 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         )
     console = Console(markup=False, highlight=False)
     console.print(
-        "This guide creates an authoring skeleton or links an installed skill. "
+        "Start a new skill or link an installed one. "
+        "This guide creates starter files or a link. "
         "It does not use AI, install packages, or create environments."
     )
     try:
@@ -80,8 +81,10 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
                 f"Description: {escape_terminal_controls(selected.description)}"
             )
             console.print(
-                "Package ownership does not establish trust. Review SKILL.md and its "
-                "supporting files before exposing them to an agent."
+                "A skill is not automatically trustworthy because it comes "
+                "from a package. "
+                "Review SKILL.md and its supporting files before making them available "
+                "to an agent."
             )
             backend = Prompt.ask(
                 "Backend", choices=list(BACKENDS), default="agents", console=console

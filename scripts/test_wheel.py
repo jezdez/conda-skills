@@ -17,7 +17,10 @@ def main() -> None:
         "wheel",
         nargs="?",
         type=Path,
-        help="Wheel to test; otherwise require exactly one in dist.",
+        help=(
+            "Wheel to test. If omitted, dist must contain exactly one "
+            "conda-skills wheel."
+        ),
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
