@@ -45,6 +45,7 @@ def conda_subcommands() -> Iterator[CondaSubcommand]:
 
     yield CondaSubcommand(
         name="skill",
+        aliases=("skills",),
         summary="Link conda-packaged agent skills into client directories.",
         configure_parser=configure_parser,
         action=run,

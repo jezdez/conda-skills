@@ -41,9 +41,10 @@ def run_cli(tmp_path: Path) -> Callable[..., subprocess.CompletedProcess[str]]:
         *args: str,
         cwd: Path = tmp_path,
         env: dict[str, str] | None = None,
+        command: str = "skill",
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, "-m", "conda", "skill", *args],
+            [sys.executable, "-m", "conda", command, *args],
             cwd=cwd,
             env={**environment, **(env or {})},
             text=True,

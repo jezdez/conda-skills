@@ -17,6 +17,7 @@ from conda_skill.plugin import conda_subcommands, configure_parser, run
 def test_registers_skill_subcommand() -> None:
     [command] = conda_subcommands()
     assert command.name == "skill"
+    assert command.aliases == ("skills",)
     assert command.action is run
     assert command.configure_parser is configure_parser
     parser = argparse.ArgumentParser(prog="conda skill")
