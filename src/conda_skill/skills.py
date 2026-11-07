@@ -42,7 +42,7 @@ class Skill:
         if not root.is_relative_to(self.path.parents[2].resolve(strict=True)):
             raise ValueError(f"Skill escapes environment: {self.path}")
         result: list[tuple[str, str]] = []
-        pending = sorted(root.iterdir(), reverse=True)
+        pending = sorted(root.iterdir(), key=lambda path: path.name, reverse=True)
         while pending:
             path = pending.pop()
             mode = path.lstat().st_mode
@@ -52,7 +52,9 @@ class Skill:
                 kind = "directory"
                 if not path.resolve(strict=True).is_relative_to(root):
                     raise ValueError(f"Directory escapes skill: {path}")
-                pending.extend(sorted(path.iterdir(), reverse=True))
+                pending.extend(
+                    sorted(path.iterdir(), key=lambda child: child.name, reverse=True)
+                )
             elif stat.S_ISREG(mode):
                 kind = "file"
             else:

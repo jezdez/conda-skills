@@ -291,7 +291,7 @@ def test_skill_read_rechecks_symlinks_after_discovery(
 
 def test_skill_read_allows_internal_symlink(prefix: Path) -> None:
     [skill] = discover(prefix)
-    (skill.path / "reference.md").symlink_to("references/example.md")
+    (skill.path / "reference.md").symlink_to(Path("references") / "example.md")
     assert skill.read_file("reference.md") == (
         skill.path / "references/example.md"
     ).read_bytes().decode("utf-8")

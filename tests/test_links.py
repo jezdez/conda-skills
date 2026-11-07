@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -53,6 +54,9 @@ def test_unlink_verifies_internal_source_alias(
     assert relocated.is_dir()
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="Windows normalizes .. before following symlinks"
+)
 def test_unlink_preserves_parent_traversal_after_source_alias(
     prefix: Path, tmp_path: Path
 ) -> None:
