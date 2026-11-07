@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Avoid explicit successful exits in the release verification login shell, preventing logout cleanup from turning successful channel checks into job failures.
 - Correct the normalized PyPI source URL used for conda release builds.
 
 ## 0.2.0 - 2026-11-07

@@ -102,13 +102,17 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
 
-### Resume the 0.2.0 conda build
+### 0.2.0 publication recovery
 
 The 0.2.0 release published its Python distributions before the conda build failed on a source URL using the hyphenated project directory. The corrected URL uses PyPI's normalized `conda_skills` directory. The published source digest is `0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02`.
 
-The manual entry point in `publish-conda.yml` resumes only this release from `main`. It retains the original annotated tag and published source archive. It does not upload Python distributions or move the tag. The conda artifact is built once from the verified source, then signed and passed through the usual protected upload and channel checks. Because the signing workflow runs from `main`, its certificate records the recovery workflow's commit and branch rather than claiming to be the original tagged workflow run.
+The temporary manual entry point in `publish-conda.yml` resumed only this release from `main`, retaining the original annotated tag and published source archive. It did not upload Python distributions or move the tag. The conda artifact was built once from the verified source, then signed and passed through the protected upload. Its certificate records the recovery workflow's commit `97e3b4ed9be2a14ad0330b3ea0738dd493e82a73` and `refs/heads/main`, not the original tagged workflow run. The completed recovery entry point has been removed. Normal releases still require the original tag and source identity.
 
-Manual recovery requires a temporary `main` deployment policy in the `anaconda` environment, with reviewer approval still enabled. Remove the temporary policy after completion. Finalize the existing draft only after verifying both indexes and their original artifact digests. Do not rerun a completed upload or overwrite an existing channel package.
+Recovery completed on November 7, 2026. [Run 42380250727](https://github.com/jezdez/conda-skills/actions/runs/42380250727) built the conda package from that archive. Signing succeeded after the Sigstore outage ended, and the user approved the protected upload. The package was uploaded, but verification reported a failure after both local inspection and the channel checks.
+
+Independent checks verified the conda publication statement and SLSA provenance, the downloaded channel package, API metadata, repodata, and a fresh channel installation. The conda artifact's SHA-256 is `4f218a5e1b74c397916df746a548a8a21be360978b2e52518f0053ea091d6476`. The wheel and source archive still matched the original PyPI and GitHub digests. The unchanged GitHub draft was finalized as an immutable release, and the temporary `main` deployment permission was removed. Do not rerun the completed upload.
+
+The verification failure is consistent with login-shell cleanup: an explicit `exit 0` runs `.bash_logout`, where Ubuntu's `clear_console` can fail without a console and trigger the error trap at line 6. A test reproduces that exact failure using a failing logout command. The ended runner's logout file was not captured, so this is not proof of its contents. Successful verification now breaks out of the loop and reaches the end of the script normally. Tests cover immediate success, delayed indexing, mismatched hashes, and malformed metadata without real uploads.
 
 ### 0.1.0 publication incident
 

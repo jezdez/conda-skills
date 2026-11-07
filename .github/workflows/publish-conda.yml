@@ -1,16 +1,6 @@
 name: Publish conda package
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Release version to resume (currently only 0.2.0)
-        required: true
-        type: string
-      source-sha256:
-        description: SHA-256 of the source distribution published to PyPI
-        required: true
-        type: string
   workflow_call:
     secrets:
       ANACONDA_API_KEY:
@@ -68,17 +58,8 @@ jobs:
           release_sha="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
           test "$(git rev-parse HEAD)" = "$release_sha"
           git merge-base --is-ancestor "$release_sha" origin/main
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            test "$GITHUB_REF" = refs/heads/main
-            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-            # Resume only the existing partial release, without moving its tag.
-            test "$RELEASE_TAG" = 0.2.0
-            test "$release_sha" = 45c27c2b9c0d943b4c59696ce097837891860460
-            test "$CONDA_SKILLS_SOURCE_SHA256" = 0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02
-          else
-            test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
-            test "$release_sha" = "$GITHUB_SHA"
-          fi
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          test "$release_sha" = "$GITHUB_SHA"
           printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
@@ -89,21 +70,6 @@ jobs:
       - run: conda workspace install --locked -e build
       - name: Validate release metadata
         run: conda task run -e build check-release "$RELEASE_TAG"
-      - name: Use the repaired recipe for manual resume
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          set -euo pipefail
-          # Check VCS-derived metadata before this intentional recipe-only change.
-          git show "$GITHUB_SHA:recipe/recipe.yaml" > recipe/recipe.yaml
-          conda workspace run -e build -- python -c '
-          import os
-          from pathlib import Path
-          from conda.common.serialize import yaml
-
-          recipe = yaml.loads(Path("recipe/recipe.yaml").read_text(encoding="utf-8"))
-          if recipe["context"]["version"] != os.environ["RELEASE_TAG"]:
-              raise SystemExit("The repaired recipe version must match the release tag.")
-          '
       - name: Verify the published source distribution
         run: |
           set -euo pipefail
@@ -193,7 +159,7 @@ jobs:
           shopt -s nullglob
           packages=(conda-dist/noarch/*.conda)
           test "${#packages[@]}" -eq 1
-          # Bind signing to the invocation commit, which is main for manual resume.
+          # Bind signing to this reusable workflow and the release commit.
           gh attestation verify "${packages[0]}" \
             --repo "$GITHUB_REPOSITORY" --bundle "$BUNDLE" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/publish-conda.yml" \
@@ -304,6 +270,7 @@ jobs:
           printf 'Verifying %s: build=%s sha256=%s size=%s\n' "$filename" "$build" "$expected_sha256" "$expected_size"
           phase='channel metadata'
 
+          verified=false
           for _ in {1..12}; do
             distribution="$(
               curl -fsSL --connect-timeout 10 --max-time 30 \
@@ -347,14 +314,17 @@ jobs:
                       and .sha256 == $sha256
                       and .size == $size)
                 ' <<< "$repodata" >/dev/null 2>&1; then
-              exit 0
+              verified=true
+              break
             fi
             printf 'Published metadata is not yet a match; retrying.\n' >&2
             sleep 5
           done
 
-          echo "Could not verify the published package against Anaconda.org distribution metadata and noarch repodata." >&2
-          exit 1
+          if [ "$verified" != true ]; then
+            echo "Could not verify the published package against Anaconda.org distribution metadata and noarch repodata." >&2
+            exit 1
+          fi
       - name: Install and smoke-test the published package
         run: |
           set -euo pipefail

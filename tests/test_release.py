@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import io
 import json
 import os
@@ -26,28 +27,21 @@ def test_release_source_url_uses_normalized_distribution_name() -> None:
     )
 
 
-def test_manual_conda_resume_keeps_original_release_and_source() -> None:
-    """Limit recovery to the verified partial release without changing its source."""
+def test_conda_publication_requires_verified_release_tag() -> None:
+    """Publish only through the release caller using its unchanged tagged source."""
     workflow = yaml.loads(
         (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text(
             encoding="utf-8"
         )
     )
-    assert "workflow_dispatch" in workflow["on"]
+    assert set(workflow["on"]) == {"workflow_call"}
     build = workflow["jobs"]["build"]
     assert build["steps"][0]["with"]["ref"] == "refs/tags/${{ inputs.version }}"
     validation = next(step for step in build["steps"] if step.get("id") == "release")
-    assert 'test "$GITHUB_REF" = refs/heads/main' in validation["run"]
-    assert 'test "$RELEASE_TAG" = 0.2.0' in validation["run"]
-    assert "45c27c2b9c0d943b4c59696ce097837891860460" in validation["run"]
-    assert (
-        "0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02"
-        in validation["run"]
-    )
-    steps = build["steps"]
-    names = [step.get("name", "") for step in steps]
-    assert names.index("Validate release metadata") < names.index(
-        "Use the repaired recipe for manual resume"
+    assert 'test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"' in validation["run"]
+    assert 'test "$release_sha" = "$GITHUB_SHA"' in validation["run"]
+    assert not any(
+        "workflow_dispatch" in step.get("run", "") for step in build["steps"]
     )
     assert workflow["jobs"]["publish"]["environment"]["name"] == "anaconda"
 
@@ -125,6 +119,98 @@ def test_post_upload_inspection_diagnostics(
         if not inspect_status:
             assert json.dumps(metadata) in result.stderr
     assert "do-not-log" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("response", ["matching", "retry", "mismatch", "malformed"])
+def test_channel_verification_in_login_shell(tmp_path: Path, response: str) -> None:
+    """Check the whole polling step, including login-shell cleanup after success."""
+    bash = shutil.which("bash")
+    if (
+        os.name == "nt"
+        or not bash
+        or not shutil.which("jq")
+        or not shutil.which("sha256sum")
+    ):
+        pytest.skip("POSIX release shell tools are unavailable")
+    workflow = yaml.loads(
+        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text()
+    )
+    step = next(
+        step
+        for step in workflow["jobs"]["publish"]["steps"]
+        if step.get("name") == "Verify indexed package"
+    )
+    package = tmp_path / "package.conda"
+    package.write_bytes(b"package")
+    digest = hashlib.sha256(b"package").hexdigest()
+    fields = {
+        "name": "conda-skills",
+        "version": "0.2.0",
+        "build": "py_0",
+        "build_number": 0,
+        "subdir": "noarch",
+        "noarch": "python",
+        "license": "Apache-2.0",
+        "sha256": digest,
+        "size": 7,
+    }
+    distribution = {
+        "basename": "noarch/package.conda",
+        "version": "0.2.0",
+        "sha256": digest if response != "mismatch" else "0" * 64,
+        "size": 7,
+        "labels": ["main"],
+        "attrs": fields,
+    }
+    (tmp_path / "distribution.json").write_text(json.dumps(distribution))
+    (tmp_path / "repodata.json").write_text(
+        "invalid JSON"
+        if response == "malformed"
+        else json.dumps({"packages.conda": {package.name: fields}})
+    )
+    # Ubuntu's clear_console may fail silently during explicit login-shell exit.
+    (tmp_path / ".bash_logout").write_text(
+        'printf "logout cleanup ran\\n" >&2\nfalse\n'
+    )
+    script = tmp_path / "verify.sh"
+    script.write_text(
+        'conda() { printf \'{"index":{"build":"py_0"}}\\n\'; }\n'
+        'stat() { printf "7\\n"; }\n'
+        'sleep() { printf "retry\\n" >> "$HOME/retries"; }\n'
+        "curl() {\n"
+        '  if [ "$RESPONSE" = retry ] && [ ! -e "$HOME/retries" ]; then return 22; fi\n'
+        '  case "$*" in\n'
+        '    *repodata.json*) command cat "$HOME/repodata.json" ;;\n'
+        '    *) command cat "$HOME/distribution.json" ;;\n'
+        "  esac\n"
+        "}\n" + step["run"],
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [bash, "--noprofile", "--norc", "-el", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env={
+            **os.environ,
+            "HOME": str(tmp_path),
+            "PACKAGE": str(package),
+            "RELEASE_TAG": "0.2.0",
+            "RESPONSE": response,
+        },
+    )
+    assert (result.returncode == 0) == (response in {"matching", "retry"}), (
+        result.stderr
+    )
+    if response in {"matching", "retry"}:
+        assert "logout cleanup ran" not in result.stderr
+    else:
+        assert "Could not verify the published package" in result.stderr
+    retries = tmp_path / "retries"
+    expected = {"matching": 0, "retry": 1, "mismatch": 12, "malformed": 12}[response]
+    assert (
+        len(retries.read_text().splitlines()) if retries.exists() else 0
+    ) == expected
 
 
 @pytest.mark.parametrize("damage", ["none", "truncated", "checksum"])
