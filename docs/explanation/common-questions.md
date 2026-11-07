@@ -30,6 +30,12 @@ No. A package record identifies the package associated with the installed header
 
 See {doc}`skill-safety` for what the checks establish and what remains your decision.
 
+## How can I review a skill before linking it?
+
+Use `conda skill inspect NAME` to see the package metadata and file tree, then add `--file SKILL.md` or a supporting file's relative path to read it in the terminal. Use `conda skill open NAME` to open the complete directory in your system file manager instead. It opens the directory, not a packaged script or document. Both commands use the active environment unless you specify `-n` or `-p`.
+
+See {doc}`../how-to/use-an-installed-skill` for the review workflow and {doc}`../reference/commands` for preview limits and graphical-desktop requirements.
+
 ## Why separate package installation from skill linking?
 
 You may want to inspect a package before using it, or use a skill in one project but not another. Conda installs the files in an environment. The `conda skill link` command makes a selected skill available through a project or home-directory link. `conda skill unlink` removes that link and leaves the package installed.

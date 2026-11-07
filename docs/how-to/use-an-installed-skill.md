@@ -12,6 +12,21 @@ conda skill list
 
 Open `SKILL.md` in the reported directory and inspect any supporting files in your editor. Package ownership tells you where the files came from, not whether their instructions are appropriate. The commands below use `review-notes` as an example name. Substitute a name from your listing.
 
+You can inspect the files without finding their paths yourself:
+
+```sh
+conda skill inspect review-notes
+conda skill inspect review-notes --file SKILL.md
+```
+
+The first command lists the skill's metadata and file tree. Use a relative path from the tree with `--file` to read a supporting text file. Binary and oversized files are not printed. To examine the whole directory in your usual tools:
+
+```sh
+conda skill open review-notes
+```
+
+This opens the directory in the system file manager, not an individual packaged script or document. It requires a graphical desktop. Both commands use the active source environment by default and accept `-n`/`-p` overrides.
+
 ## Make it available to your project
 
 Run from the project root. The tabs select the link's destination directory:

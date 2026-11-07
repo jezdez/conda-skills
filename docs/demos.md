@@ -27,6 +27,26 @@ This version has no runtime dependencies, so the recording only needs the skill-
 
 The demo environment is removed when the recording ends. The active environment supplies the source for `list` and `link`, so neither needs `-p`. The written tutorial uses an explicitly unused environment name instead. Unlinking works from the destination independently of the active environment. Package removal remains a separate conda command.
 
+## Inspect before linking
+
+This recording starts with the local example package installed in an active, temporary environment. It shows the owning package and file tree, reads `SKILL.md`, then reads a supporting checklist before creating a project link. The checklist is part of the built package, not a file added only for the recording. File previews highlight the source without hiding Markdown syntax or link destinations.
+
+```{image} ../demos/inspect.gif
+:alt: Terminal recording showing skill metadata and a file tree, then previews of SKILL.md and references/checklist.md before linking review-notes.
+```
+
+With the example's source environment active:
+
+```sh
+conda skill inspect review-notes
+conda skill inspect review-notes --file SKILL.md
+conda skill inspect review-notes --file references/checklist.md
+# After reviewing the files:
+conda skill link review-notes
+```
+
+To review the same directory in your usual tools, run `conda skill open review-notes`. This requests a system file-manager window, which is not shown in the terminal recording. It opens the directory, never an individual packaged file. See {doc}`how-to/use-an-installed-skill` for source selection and {doc}`reference/commands` for preview limits.
+
 ## Reproduce project skills
 
 This manifest is already written in a temporary project. Conda-workspaces and conda-skills are installed in the tooling environments. The `skills` environment contains only the skill package.

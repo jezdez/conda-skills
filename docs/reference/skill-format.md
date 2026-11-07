@@ -33,7 +33,7 @@ The skill root and header must resolve inside the source environment. Companion 
 
 ## Header
 
-`SKILL.md` is UTF-8 text. YAML frontmatter starts on the first line and is enclosed by lines containing exactly `---`. LF and CRLF line endings are accepted. The parsed YAML must be a mapping containing:
+`SKILL.md` is a regular UTF-8 text file no larger than 1 MiB. This read limit is an implementation safeguard, not an Agent Skills specification requirement. YAML frontmatter starts on the first line and is enclosed by lines containing exactly `---`. LF and CRLF line endings are accepted. The parsed YAML must be a mapping containing:
 
 | Field | Requirement |
 |---|---|

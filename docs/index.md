@@ -41,7 +41,7 @@ You need conda and an agent that supports a skill-directory convention. If `cond
 Try your first skill
 ```
 
-Read a skill before using it. Conda-skills checks the package layout, but you decide whether the instructions are appropriate for your work.
+Read a skill before using it. `conda skill inspect NAME` lists its files and supports terminal previews. `conda skill open NAME` opens its directory in your file manager. Conda-skills checks the package layout, but you decide whether the instructions are appropriate for your work.
 
 ## What the commands do
 

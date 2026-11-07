@@ -100,6 +100,8 @@ Find the environment's actual prefix with `conda env list`. Future conda solves 
 
 List the skills again to confirm their names and installed package versions. Open the reported source directory in your editor and compare it with the saved copy if available.
 
+`conda skill inspect NAME` lists the files, and `conda skill open NAME` opens the directory in your file manager. Add the same `-n` or `-p` source selector used for `list` when reviewing another environment. Use `inspect NAME --file RELATIVE_PATH` for a terminal preview. Neither command executes skill instructions.
+
 - Read the complete `SKILL.md`, including changes to when the skill is selected and what it tells the agent to do.
 - Inspect all companion files, including added files and scripts. A harmless-looking header does not describe everything exposed by the directory link.
 - Review new commands, network endpoints, credential requests, and package-install instructions. Check whether they fit your project's permissions and data policy.

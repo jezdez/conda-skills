@@ -22,6 +22,7 @@ tests:
   - package_contents:
       files:
         - share/agent-skills/review-notes/SKILL.md
+        - share/agent-skills/review-notes/references/checklist.md
 
 about:
   summary: Local example skill for the conda-skills tutorial

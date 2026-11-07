@@ -42,6 +42,15 @@ You should see skill `polars` from package `agent-skill-polars`, version `0.0.8`
 
 ## 2. Read it before using it
 
+List the skill's files and preview its instructions directly:
+
+```sh
+conda skill inspect polars
+conda skill inspect polars --file SKILL.md
+```
+
+Use `--file` with a relative path from the listing to read a supporting text file. If you prefer your editor, `conda skill open polars` requests a file-manager window for the complete directory. It does not launch any packaged file.
+
 Open `SKILL.md` inside the directory shown in the listing's Path column. The environment's location depends on your conda configuration, so use that reported path. This is the text your agent will read. Read the whole file and inspect any supporting files. Its advice and examples may assume tools or workflows different from yours.
 
 Only continue if the instructions fit your project and your agent's permissions. Being available on a package channel is not a reason to trust them automatically.

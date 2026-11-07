@@ -38,6 +38,28 @@ Find and validate package-owned skill headers in the selected source environment
 
 Malformed candidates and duplicate ownership cause discovery to fail without returning a partial list. Untracked directories are ignored. See {doc}`skill-format` for validation rules.
 
+## `inspect`
+
+```sh
+conda skill inspect NAME [-n ENVIRONMENT | -p PREFIX] [--file RELATIVE_PATH] [--json]
+```
+
+Show a packaged skill's name, description, owning package, version, source directory, and directory tree. The tree includes companion files, not just `SKILL.md`. It describes the current filesystem and does not establish individual ownership or safety of every listed file.
+
+Use `--file SKILL.md` or a forward-slash path such as `--file references/joins.md` to preview a UTF-8 file without executing it. Previews have a 1 MiB limit. Binary files are identified without displaying their bytes. Paths must stay inside the skill directory. Absolute paths, parent traversal, and special files are refused.
+
+In a terminal, Rich highlights the source using the filename, keeping Markdown markers, frontmatter, comments, and link destinations visible. Unknown file types use plain text. Piped or redirected output automatically skips highlighting. Preview text still normalizes CRLF line endings, escapes terminal controls, and adds a final newline if missing. It is not a raw file export. Use `--json` and decode the `content` field when a script needs the original text.
+
+## `open`
+
+```sh
+conda skill open NAME [-n ENVIRONMENT | -p PREFIX] [--json]
+```
+
+Request the system file manager for the validated skill directory: Finder on macOS, Explorer on Windows, or `xdg-open` on Linux. No individual packaged file is launched. A graphical desktop and its opener must be available. In a headless session, use `inspect` instead.
+
+Success means the opener accepted the request, not proof that a window is visible. JSON mode still requests the file manager and reports one JSON value instead of a human confirmation. Neither command links the skill or modifies its package. Both use the same source selection as `list` and `link`.
+
 ## `status`
 
 ```text

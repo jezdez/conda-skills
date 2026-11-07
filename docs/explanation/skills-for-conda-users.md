@@ -57,6 +57,8 @@ By default, the link goes in `.agents/skills/` under the current directory. This
 |---|---|
 | `conda install PACKAGE` | Install the package in an environment. |
 | `conda skill list` | List packaged skills in the active/default environment. |
+| `conda skill inspect NAME` | Show a skill's metadata and files before deciding to use it. |
+| `conda skill open NAME` | Open its directory in your system file manager to review all its files. |
 | `conda skill link NAME` | Make an installed skill available through a link in the current directory. |
 | `conda skill status` | Inspect destination links, including broken ones. |
 | `conda skill unlink NAME` | Remove the destination link, leaving the package alone. |
@@ -64,11 +66,13 @@ By default, the link goes in `.agents/skills/` under the current directory. This
 
 `PACKAGE` and `NAME` may differ: `agent-skill-polars` supplies the skill `polars`. A skill about Polars does not necessarily install the Polars library. Only dependencies declared by its package affect conda's solver.
 
-Install the plugin in the environment that runs conda, usually `base`. Your active environment can hold the skills. For another source, `list` and `link` accept `-n` or `-p`. Destination commands such as `status` and `unlink` do not need that source selection. Home-directory changes require explicit `--global`.
+Install the plugin in the environment that runs conda, usually `base`. Your active environment can hold the skills. For another source, `list`, `inspect`, `open`, and `link` accept `-n` or `-p`. Destination commands such as `status` and `unlink` do not need that source selection. Home-directory changes require explicit `--global`.
 
 ## What you still need to decide
 
-Read the instructions and supporting files before linking a skill. Package records and valid metadata do not make its advice trustworthy. Keep the agent's permissions appropriate for your project, especially when a skill includes scripts.
+Read the instructions and supporting files before linking a skill. Use `inspect NAME --file SKILL.md` to read in the terminal, or `open NAME` to find the complete directory in your file manager. Opening the directory does not launch a packaged file or execute its instructions. On a machine without a graphical desktop, use `inspect`.
+
+Package records and valid metadata do not make a skill's advice trustworthy. Keep the agent's permissions appropriate for your project, especially when a skill includes scripts.
 
 Links expose the installed files directly. Updating a package changes what linked projects can read, and uninstalling it leaves broken links. An agent may also retain instructions it has already loaded. Review updates and follow your agent's reload instructions.
 

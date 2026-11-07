@@ -100,6 +100,16 @@ The result is an object with string fields `name`, `path`, and `recipe`. The pat
 {"name": "review-notes", "path": "/path/to/project/review-notes", "recipe": "/path/to/project/review-notes/recipe/recipe.yaml"}
 ```
 
+## `inspect`
+
+Without `--file`, the result contains `name`, `description`, `package`, `version`, `path`, and `files`. Each `files` entry has a relative POSIX-style `path` and a `type` of `file`, `directory`, `symlink`, or `special`. Entries are sorted. This lists the skill directory's current contents, not package ownership for each file.
+
+With `--file`, the metadata fields remain and `files` is replaced by `file` (the requested relative path), `kind` (`text` or `binary`), and `content` (the original decoded text or `null` for binary data). File previews are limited to 1 MiB. Errors use conda's usual error response rather than a partial result.
+
+## `open`
+
+The result contains `name`, `path`, and `opened: true` after the system opener accepts the directory request. This does not confirm that a file-manager window is visible. JSON mode does not suppress the opening operation.
+
 ## Errors and literal text
 
 Check the exit status before parsing a response as a successful result. On failure, the process exits nonzero and conda emits its normal error response. There is no plugin-specific error schema. Conda's fields can vary with the error type and conda version.

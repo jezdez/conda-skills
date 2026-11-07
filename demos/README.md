@@ -14,6 +14,7 @@ conda task run -e build install
 conda task run -e build build-example
 vhs demos/use-a-skill.tape
 vhs demos/quickstart.tape
+vhs demos/inspect.tape
 vhs demos/skill-forge.tape
 vhs demos/recover-link.tape
 ```
@@ -34,6 +35,7 @@ The recording shell's `conda` command invokes the build environment's Python exp
 - `_settings.tape`: shared appearance and timing.
 - `use-a-skill.tape`: list, review, link, status, and unlink.
 - `quickstart.tape`: create authoring files with confirmation.
+- `inspect.tape`: inspect metadata, instructions, and a packaged reference before linking.
 - `skill-forge.tape`: download a published skill package and create a project link.
 - `project-skills.toml` and `project-skills.tape`: declare, lock, install, and link a project's skills.
 - `recover-link.tape`: inspect and repair a broken link without deleting package files.
