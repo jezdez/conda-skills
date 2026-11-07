@@ -1,0 +1,326 @@
+name: Recover the original 0.1.0 release
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash -el {0}
+
+env:
+  RELEASE_TAG: 0.1.0
+  ORIGINAL_SHA: 216fe73bf25807e2c62c8dbe0e8d295dd96f0a04
+  ORIGINAL_TAG: bfb62080cf623133f7cf217671132794222126e8
+  PACKAGE_SHA256: 9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d
+  GH_REPO: jezdez/conda-skills
+  WHEEL_SHA256: b4869512931a490c65cdcba20564719ac27f2b4e81b5c195a0226b7b179d8c9a
+  SDIST_SHA256: 5a4fa69d2fc3064463047df311bfeb1e2723fff6c7f4012e4ae599d9e0002589
+
+concurrency:
+  group: release-0.1.0
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify original release evidence without writes
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'jezdez/conda-skills'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+    outputs:
+      package-sha256: ${{ steps.evidence.outputs.package_sha256 }}
+      release-id: ${{ steps.identity.outputs.release_id }}
+      release-sha256: ${{ steps.identity.outputs.release_sha256 }}
+    steps:
+      - name: Check original run identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/42319158589" | jq -e \
+            --arg sha "$ORIGINAL_SHA" --arg repo "$GH_REPO" '
+              .id == 42319158589 and .repository.full_name == $repo and
+              .head_repository.full_name == $repo and .path == ".github/workflows/release.yml" and
+              .event == "push" and .head_branch == "0.1.0" and .head_sha == $sha and
+              .status == "completed" and .conclusion == "failure"
+            ' >/dev/null
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: conda-package
+          path: conda-dist/noarch/
+          repository: jezdez/conda-skills
+          run-id: 42319158589
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: conda-publication-attestation
+          path: conda-attestation/
+          repository: jezdez/conda-skills
+          run-id: 42319158589
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+          repository: jezdez/conda-skills
+          run-id: 42319158589
+          github-token: ${{ github.token }}
+      - name: Verify original publication bundle and build provenance
+        id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob dotglob
+          packages=(conda-dist/noarch/*)
+          bundles=(conda-attestation/*)
+          test "${#packages[@]}" -eq 1
+          test "${#bundles[@]}" -eq 1
+          package="${packages[0]}"
+          test -f "$package" && test ! -L "$package"
+          test "$package" = conda-dist/noarch/conda-skills-0.1.0-pyh4616a5c_0.conda
+          printf '%s  %s\n' "$PACKAGE_SHA256" "$package" | sha256sum --check --strict
+          test "${bundles[0]}" = "conda-attestation/${package##*/}.sigstore.json"
+          test -f "${bundles[0]}" && test ! -L "${bundles[0]}"
+          gh attestation verify "$package" \
+            --repo "$GH_REPO" --bundle "${bundles[0]}" \
+            --signer-workflow "$GH_REPO/.github/workflows/publish-conda.yml" \
+            --signer-digest "$ORIGINAL_SHA" \
+            --source-digest "$ORIGINAL_SHA" --source-ref "refs/tags/$RELEASE_TAG" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --deny-self-hosted-runners \
+            --predicate-type https://schemas.conda.org/attestations-publish-1.schema.json \
+            --format json > "$RUNNER_TEMP/verified-publication.json"
+          jq -se '
+            length == 1 and (.[0] | type == "array" and length == 1 and
+              all(.[]; .verificationResult.statement.predicateType ==
+                "https://schemas.conda.org/attestations-publish-1.schema.json" and
+                .verificationResult.statement.predicate.targetChannel ==
+                "https://conda.anaconda.org/jezdez"))
+          ' "$RUNNER_TEMP/verified-publication.json" >/dev/null
+          gh attestation verify "$package" \
+            --repo "$GH_REPO" \
+            --signer-workflow "$GH_REPO/.github/workflows/publish-conda.yml" \
+            --signer-digest "$ORIGINAL_SHA" \
+            --source-digest "$ORIGINAL_SHA" --source-ref "refs/tags/$RELEASE_TAG" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --deny-self-hosted-runners --predicate-type https://slsa.dev/provenance/v1
+          digest="$(sha256sum "$package")"
+          printf 'package_sha256=%s\n' "${digest%% *}" >> "$GITHUB_OUTPUT"
+      - name: Verify retained distributions against original digests and PyPI
+        run: |
+          set -euo pipefail
+          shopt -s nullglob dotglob
+          files=(dist/*)
+          test "${#files[@]}" -eq 2
+          wheel="conda_skills-$RELEASE_TAG-py3-none-any.whl"
+          sdist="conda_skills-$RELEASE_TAG.tar.gz"
+          test -f "dist/$wheel" && test ! -L "dist/$wheel"
+          test -f "dist/$sdist" && test ! -L "dist/$sdist"
+          printf '%s  %s\n' "$WHEEL_SHA256" "dist/$wheel" "$SDIST_SHA256" "dist/$sdist" | sha256sum --check --strict
+          curl -fsSL --connect-timeout 10 --max-time 30 \
+            "https://pypi.org/pypi/conda-skills/$RELEASE_TAG/json" | jq -e \
+            --arg wheel "$wheel" --arg sdist "$sdist" \
+            --arg wheel_sha "$WHEEL_SHA256" --arg sdist_sha "$SDIST_SHA256" '
+              .info.version == "0.1.0" and (.urls | length == 2) and
+              ([.urls[] | {filename, sha256: .digests.sha256, yanked}] | sort_by(.filename)) ==
+              ([{filename: $wheel, sha256: $wheel_sha, yanked: false},
+                {filename: $sdist, sha256: $sdist_sha, yanked: false}] | sort_by(.filename))
+            ' >/dev/null
+      - &release-identity
+        name: Verify unchanged annotated tag and exact draft assets
+        id: identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" | jq -e \
+            --arg tag "$ORIGINAL_TAG" '.object.type == "tag" and .object.sha == $tag' >/dev/null
+          gh api "repos/$GH_REPO/git/tags/$ORIGINAL_TAG" | jq -e \
+            --arg sha "$ORIGINAL_SHA" '.tag == "0.1.0" and .object.type == "commit" and .object.sha == $sha' >/dev/null
+          gh api "repos/$GH_REPO/releases/437214115" > "$RUNNER_TEMP/release.json"
+          jq -e --arg wheel_sha "sha256:$WHEEL_SHA256" --arg sdist_sha "sha256:$SDIST_SHA256" '
+            .id == 437214115 and .draft == true and .prerelease == false and .tag_name == "0.1.0" and
+            (.assets | length == 2) and
+            ([.assets[] | {name, digest, state}] | sort_by(.name)) ==
+            ([{name: "conda_skills-0.1.0-py3-none-any.whl", digest: $wheel_sha, state: "uploaded"},
+              {name: "conda_skills-0.1.0.tar.gz", digest: $sdist_sha, state: "uploaded"}] | sort_by(.name))
+          ' "$RUNNER_TEMP/release.json" >/dev/null
+          while IFS=$'\t' read -r id digest; do
+            [[ "$id" =~ ^[0-9]+$ ]]
+            gh api -H 'Accept: application/octet-stream' "repos/$GH_REPO/releases/assets/$id" > "$RUNNER_TEMP/asset-$id"
+            printf '%s  %s\n' "${digest#sha256:}" "$RUNNER_TEMP/asset-$id" | sha256sum --check --strict
+          done < <(jq -r '.assets[] | [.id, .digest] | @tsv' "$RUNNER_TEMP/release.json")
+          # Ignore download counters, but bind the draft content and immutable asset identities.
+          digest="$(jq -Sc '{id, tag_name, target_commitish, name, body, draft, prerelease,
+            assets: [.assets[] | {id, name, size, digest, state, created_at, updated_at}] | sort_by(.id)}' \
+            "$RUNNER_TEMP/release.json" | sha256sum)"
+          printf 'release_sha256=%s\n' "${digest%% *}" >> "$GITHUB_OUTPUT"
+          printf 'release_id=%s\n' "$(jq -er '.id' "$RUNNER_TEMP/release.json")" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish the verified original conda package
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    environment:
+      name: anaconda
+      url: https://anaconda.org/jezdez/conda-skills
+    steps:
+      - name: Require the protected upload credential
+        env:
+          ANACONDA_API_KEY: ${{ secrets.ANACONDA_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANACONDA_API_KEY" ]; then
+            echo "The anaconda environment must provide ANACONDA_API_KEY." >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 216fe73bf25807e2c62c8dbe0e8d295dd96f0a04
+          persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: conda-package
+          path: conda-dist/noarch/
+          repository: jezdez/conda-skills
+          run-id: 42319158589
+          github-token: ${{ github.token }}
+      - name: Check vetted package digest and index metadata
+        env:
+          EXPECTED_SHA256: ${{ needs.verify.outputs.package-sha256 }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob dotglob
+          packages=(conda-dist/noarch/*)
+          test "${#packages[@]}" -eq 1
+          package="${packages[0]}"
+          test -f "$package" && test ! -L "$package"
+          test "$package" = conda-dist/noarch/conda-skills-0.1.0-pyh4616a5c_0.conda
+          [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$package" | sha256sum --check --strict
+          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$package")"
+          jq -se 'length == 1 and (.[0].index |
+            .name == "conda-skills" and .version == "0.1.0" and .build_number == 0 and
+            .subdir == "noarch" and .noarch == "python" and .license == "Apache-2.0")' <<< "$metadata" >/dev/null
+          build="$(jq -er '.index.build' <<< "$metadata")"
+          [[ "$build" =~ ^[A-Za-z0-9_]+$ ]]
+          test "${package##*/}" = "conda-skills-$RELEASE_TAG-$build.conda"
+          printf 'PACKAGE=%s\n' "$package" >> "$GITHUB_ENV"
+      - *release-identity
+      - name: Check draft identity and refuse any existing channel release
+        env:
+          EXPECTED_RELEASE: ${{ needs.verify.outputs.release-sha256 }}
+          CURRENT_RELEASE: ${{ steps.identity.outputs.release_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_RELEASE" =~ ^[0-9a-f]{64}$ ]]
+          test "$CURRENT_RELEASE" = "$EXPECTED_RELEASE"
+          status="$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' \
+            "https://api.anaconda.org/release/jezdez/conda-skills/$RELEASE_TAG")"
+          if [ "$status" != "404" ]; then
+            echo "Anaconda.org release already exists or could not be checked." >&2
+            exit 1
+          fi
+      - name: Upload immutable package
+        env:
+          ANACONDA_API_KEY: ${{ secrets.ANACONDA_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANACONDA_API_KEY" ]; then
+            echo "The anaconda environment must provide ANACONDA_API_KEY." >&2
+            exit 1
+          fi
+          unset ANACONDA_FORCE ANACONDA_SERVER_URL
+          conda workspace run -e build -- rattler-build upload --no-config anaconda \
+            --owner jezdez --channel main "$PACKAGE"
+      - name: Verify indexed package
+        run: |
+          set -euo pipefail
+          filename="${PACKAGE##*/}"
+          expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
+          expected_size="$(stat -c '%s' "$PACKAGE")"
+          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$PACKAGE")"
+          build="$(jq -er '.index.build' <<< "$metadata")"
+          for _ in {1..12}; do
+            distribution="$(curl -fsSL --connect-timeout 10 --max-time 30 \
+              "https://api.anaconda.org/dist/jezdez/conda-skills/$RELEASE_TAG/noarch/$filename")" || distribution=''
+            repodata="$(curl -fsSL --connect-timeout 10 --max-time 30 \
+              https://conda.anaconda.org/jezdez/noarch/repodata.json)" || repodata=''
+            if jq -se --arg basename "noarch/$filename" --arg build "$build" \
+              --arg sha256 "$expected_sha256" --argjson size "$expected_size" '
+                length == 1 and (.[0] | .basename == $basename and .version == "0.1.0" and
+                  .sha256 == $sha256 and .size == $size and (.labels | index("main")) and
+                  .attrs.build == $build and .attrs.build_number == 0 and .attrs.subdir == "noarch")
+              ' <<< "$distribution" >/dev/null 2>&1 && \
+              jq -se --arg filename "$filename" --arg build "$build" \
+                --arg sha256 "$expected_sha256" --argjson size "$expected_size" '
+                  length == 1 and (.[0]."packages.conda"[$filename] |
+                    .name == "conda-skills" and .version == "0.1.0" and .build == $build and
+                    .build_number == 0 and .subdir == "noarch" and .noarch == "python" and
+                    .license == "Apache-2.0" and .sha256 == $sha256 and .size == $size)
+                ' <<< "$repodata" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Could not verify the published package against distribution metadata and noarch repodata." >&2
+          exit 1
+      - name: Install and smoke-test the published package
+        run: |
+          set -euo pipefail
+          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$PACKAGE")"
+          build="$(jq -er '.index.build' <<< "$metadata")"
+          filename="${PACKAGE##*/}"
+          sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
+          consumer="$(mktemp -d "$RUNNER_TEMP/conda-skills-consumer.XXXXXX")"
+          trap 'rm -rf "$consumer"' EXIT
+          conda create --yes --prefix "$consumer/prefix" \
+            --override-channels --strict-channel-priority \
+            --channel https://conda.anaconda.org/jezdez --channel conda-forge \
+            "conda-skills=$RELEASE_TAG=$build"
+          jq -se --arg build "$build" --arg sha256 "$sha256" --arg filename "$filename" '
+            length == 1 and (.[0] | .name == "conda-skills" and .version == "0.1.0" and
+              .build == $build and .sha256 == $sha256 and
+              .url == ("https://conda.anaconda.org/jezdez/noarch/" + $filename))
+          ' "$consumer/prefix/conda-meta/conda-skills-$RELEASE_TAG-$build.json" >/dev/null
+          conda run --prefix "$consumer/prefix" --cwd "$consumer" \
+            python -I "$GITHUB_WORKSPACE/scripts/smoke_plugin.py" --installed-prefix "$consumer/prefix"
+
+  finalize:
+    name: Publish only the unchanged original GitHub draft
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - *release-identity
+      - name: Finalize verified draft by its original ID
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.verify.outputs.release-id }}
+          EXPECTED_RELEASE: ${{ needs.verify.outputs.release-sha256 }}
+          CURRENT_RELEASE: ${{ steps.identity.outputs.release_sha256 }}
+          CURRENT_ID: ${{ steps.identity.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]
+          [[ "$EXPECTED_RELEASE" =~ ^[0-9a-f]{64}$ ]]
+          test "$CURRENT_ID" = "$RELEASE_ID"
+          test "$CURRENT_RELEASE" = "$EXPECTED_RELEASE"
+          gh api --method PATCH "repos/$GH_REPO/releases/$RELEASE_ID" -F draft=false \
+            | jq -e --argjson id "$RELEASE_ID" '.id == $id and .tag_name == "0.1.0" and .draft == false' >/dev/null

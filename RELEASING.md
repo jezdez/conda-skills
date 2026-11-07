@@ -102,6 +102,14 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
 
+### Recover the 0.1.0 conda publication
+
+The first release published to PyPI, but the conda upload stopped before sending the package because the reusable workflow did not receive its environment secret. Future releases explicitly pass `ANACONDA_API_KEY` and declare it required. Re-running the original tagged workflow cannot pick up that correction.
+
+`recover-release.yml` is a manual, version-specific recovery for `0.1.0` from run `42319158589`. It downloads the original artifacts, checks their fixed digests, verifies the conda attestations against the original commit and tag, and compares the Python distributions with PyPI and the existing draft. It does not build or publish Python packages. The protected `anaconda` job uploads only the original conda package, verifies the channel and a fresh installation, and finalizes the existing GitHub draft after success.
+
+The workflow runs from `main`, so an administrator must temporarily permit that branch in the `anaconda` environment while retaining reviewer approval. Remove that branch exception after recovery. Do not adapt this workflow to another version by relaxing its digest or identity checks, and do not rerun it after a successful conda upload: it deliberately refuses existing channel releases.
+
 Pushing a tag is a publication action and requires explicit authorization. Workflow files alone do not configure the external publishers, and passing local preparation checks does not authorize uploads or release announcements.
 
 Once publication has been authorized and confirmed at the selected destinations, confirm the actual version and date in `CHANGELOG.md`, retain an Unreleased section for later work, and update installation links to the verified locations. Keep validation evidence separate from evidence of publication.
