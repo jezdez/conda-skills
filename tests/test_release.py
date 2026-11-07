@@ -14,6 +14,23 @@ import pytest
 from conda.common.serialize import yaml
 
 
+def test_conda_publisher_receives_required_environment_secret() -> None:
+    """Pass the environment secret explicitly across the reusable workflow boundary."""
+    workflows = Path(__file__).parents[1] / ".github/workflows"
+    release = yaml.loads((workflows / "release.yml").read_text(encoding="utf-8"))
+    publisher = yaml.loads(
+        (workflows / "publish-conda.yml").read_text(encoding="utf-8")
+    )
+    assert release["jobs"]["publish-conda"]["secrets"] == {
+        "ANACONDA_API_KEY": "${{ secrets.ANACONDA_API_KEY }}"
+    }
+    assert (
+        publisher["on"]["workflow_call"]["secrets"]["ANACONDA_API_KEY"]["required"]
+        is True
+    )
+    assert publisher["jobs"]["publish"]["environment"]["name"] == "anaconda"
+
+
 @pytest.mark.parametrize("damage", ["none", "truncated", "checksum"])
 def test_release_checks_gzip_before_recording_digest(
     tmp_path: Path, damage: str
