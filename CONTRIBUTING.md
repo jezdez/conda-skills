@@ -12,9 +12,9 @@ conda workspace install --locked -e default
 conda task run -e default check
 ```
 
-The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, and ty. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
+The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, ty, and zizmor. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
 
-The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, and prek belong to `dev`, while pytest and coverage belong to `test`. The `docs` and `build` environments contain their own tooling and shared runtime dependencies. Both test and build environments need Hatchling and hatch-vcs for editable installation and release-version tests.
+The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, prek, and zizmor belong to `dev`, while pytest and coverage belong to `test`. The `docs` and `build` environments contain their own tooling and shared runtime dependencies. Both test and build environments need Hatchling and hatch-vcs for editable installation and release-version tests.
 
 To use the plugin with your usual conda executable, follow `docs/how-to/installation.md`. Those checkout instructions use `conda-pypi` with an explicit target environment, separate from the workspace's check and build environments. Validate installation examples in disposable environments, not a shared base environment.
 
@@ -42,6 +42,10 @@ Use `conda task run -e default format` to apply the project's formatter after in
 Pytest measures line and branch coverage, including CLI subprocesses. The normal `check` task requires at least 95% combined coverage and writes `coverage.xml` and an HTML report at `htmlcov/index.html`. Generated version metadata is excluded. CI retains a report for each operating system and Python version. For a focused diagnostic run without coverage, use `pytest --no-cov`. Run the complete check before submitting changes.
 
 To install local commit hooks, run `conda task run -e default install-hooks`. Run them explicitly with `conda task run -e default prek`.
+
+The local prek hook runs `check`, including type checking and workflow security, without a second set of tool installations. Run either check alone with `conda task run -e default type-check` or `conda task run -e default check-workflow-security`. Zizmor runs offline and fails on medium-or-higher findings. Lower-severity advice is not blocking, and offline mode does not audit remote action contents. The build environment's `check-workflows` task runs Actionlint for workflow and shell syntax.
+
+The `dev` feature also includes conda-workspaces so the hook can find `conda task` when launched from the workspace environment.
 
 ## Documentation changes
 

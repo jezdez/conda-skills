@@ -59,7 +59,9 @@ def test_quickstart_links_selected_batch(
         source = batch_prefix / "share/agent-skills" / name
         assert (directory / name).resolve() == source
         assert str(source) in output.replace("\n", "")
-        assert output.count(f"Link destination: {directory / name}") == 1
+        assert (
+            output.replace("\n", "").count(f"Link destination: {directory / name}") == 1
+        )
     assert output.count("Example: useful guidance") == 2
     assert output.count("Guidance for second") == 2
     assert output.index("Guidance for spare") < output.index("Review source:")

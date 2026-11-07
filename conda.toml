@@ -16,7 +16,8 @@ lint = "ruff check src tests scripts docs/conf.py docs/examples/build.py"
 format = "ruff format src tests scripts docs/conf.py docs/examples/build.py"
 format-check = "ruff format --check src tests scripts docs/conf.py docs/examples/build.py"
 type-check = "ty check src"
-check = {depends-on = ["test", "lint", "format-check", "type-check"]}
+check = {depends-on = ["test", "lint", "format-check", "type-check", "check-workflow-security"]}
+check-workflow-security = "zizmor --offline --min-severity medium .github/workflows"
 build = { cmd = "python -m build --no-isolation", default-environment = "build" }
 prek = "prek run --all-files"
 install-hooks = "prek install"
@@ -30,9 +31,11 @@ build-example = { cmd = "rattler-build build --recipe docs/examples/recipe/recip
 test-example = { cmd = "python scripts/test_tutorial.py", depends-on = ["install", "build-example"], default-environment = "build" }
 
 [feature.dev.dependencies]
+conda-workspaces = ">=0.12"
 ruff = ">=0.14"
 ty = ">=0.0.1"
 prek = ">=0.5.9"
+zizmor = ">=1.32"
 
 [feature.test.dependencies]
 pytest = ">=8"
