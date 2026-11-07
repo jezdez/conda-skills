@@ -149,12 +149,12 @@ def test_source_retrieval_retries_downloads_not_validation(
     assert "--retry-all-errors" in arguments
     assert arguments[arguments.index("--retry-delay") + 1] == "2"
     assert arguments[arguments.index("--retry-max-time") + 1] == "120"
-    assert arguments[-3:] == [
+    assert arguments[-3:-1] == [
         "https://files.pythonhosted.org/packages/source/c/conda_skills/"
         "conda_skills-0.2.1.tar.gz",
         "-o",
-        str(tmp_path / "release-source.tar.gz"),
     ]
+    assert Path(arguments[-1]) == tmp_path / "release-source.tar.gz"
     if damage == "archive":
         assert "FAILED" in result.stdout
     assert "for " not in step["run"]
