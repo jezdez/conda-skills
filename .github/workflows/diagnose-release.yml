@@ -1,0 +1,60 @@
+name: Diagnose release inspection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash -el {0}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 216fe73bf25807e2c62c8dbe0e8d295dd96f0a04
+          persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: true
+      - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
+      - run: conda workspace install --locked -e build
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: conda-package
+          path: conda-dist/noarch/
+          repository: jezdez/conda-skills
+          run-id: 42319158589
+          github-token: ${{ github.token }}
+      - name: Verify original bytes and reproduce the first inspection
+        run: |
+          set -euxo pipefail
+          trap 'rc=$?; printf "failed line=%s status=%s\n" "$LINENO" "$rc" >&2' ERR
+          package=conda-dist/noarch/conda-skills-0.1.0-pyh4616a5c_0.conda
+          printf '%s  %s\n' 9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d "$package" | sha256sum --check --strict
+          type -a conda jq stat sha256sum
+          conda list -n base '^(conda|conda-workspaces)$'
+          conda workspace run -e build -- rattler-build --version
+          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$package")"
+          printf 'inspection=%s\n' "$metadata"
+          build="$(jq -er '.index.build' <<< "$metadata")"
+          printf 'build=%s\n' "$build"
+          printf 'PACKAGE=%s\n' "$package" >> "$GITHUB_ENV"
+      - name: Reproduce post-upload inspection without uploading
+        run: |
+          set -euxo pipefail
+          trap 'rc=$?; printf "failed line=%s status=%s\n" "$LINENO" "$rc" >&2' ERR
+          filename="${PACKAGE##*/}"
+          expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
+          expected_size="$(stat -c '%s' "$PACKAGE")"
+          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$PACKAGE")"
+          printf 'inspection=%s\n' "$metadata"
+          build="$(jq -er '.index.build' <<< "$metadata")"
+          printf 'filename=%s sha256=%s size=%s build=%s\n' "$filename" "$expected_sha256" "$expected_size" "$build"
