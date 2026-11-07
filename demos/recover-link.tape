@@ -6,7 +6,7 @@ Hide
 Type `source demos/setup.sh installed`
 Enter
 Wait /\$/
-Type "conda skill install review-notes -p ../skills"
+Type "conda skill link review-notes -p ../skills"
 Enter
 Wait /\$/
 Type "clear"
@@ -28,9 +28,11 @@ Wait /\$/
 Sleep 2s
 Type "# Remove only the inspected symlink, not its target directory"
 Enter
-Type "unlink .agents/skills/review-notes"
+Type "conda skill unlink review-notes --force"
 Enter
-Type "conda skill install review-notes -p ../skills-moved"
+Wait /\$/
+Sleep 1s
+Type "conda skill link review-notes -p ../skills-moved"
 Enter
 Wait /\$/
 Type "conda skill status"

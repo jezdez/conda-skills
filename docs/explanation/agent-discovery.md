@@ -4,7 +4,7 @@ Conda installs a skill package into an environment. Conda-skills finds its recor
 
 ## From package to skill
 
-For example, package `agent-skill-polars` version `0.0.8` supplies the skill named `polars`. Use the package name with conda's package commands and the skill name with `conda skill install`. The version shown by `conda skill list` comes from the package record, not the library or instruction text.
+For example, package `agent-skill-polars` version `0.0.8` supplies the skill named `polars`. Use the package name with conda's package commands and the skill name with `conda skill link`. The version shown by `conda skill list` comes from the package record, not the library or instruction text.
 
 Conda records installed package files in `conda-meta/`. The plugin looks for recorded headers at `share/agent-skills/<name>/SKILL.md` and checks the name, description, duplicate ownership, and filesystem containment. It ignores untracked directories. One package can supply several skills, and the `agent-skill-` package prefix is a convention rather than a requirement. See {doc}`../reference/skill-format` for the exact rules.
 
@@ -12,11 +12,11 @@ Creating a skeleton with `init` or copying `SKILL.md` into a checkout does not m
 
 ## Which environment supplies the files?
 
-Install the plugin in the environment that runs conda, commonly `base`. That conda executable can read skills from another environment without requiring Python or the plugin there. Activating the skill environment is optional.
+Install the plugin in the environment that runs conda, commonly `base`. In a standard initialized shell, activation changes the active environment while the `conda` shell function continues to call the base conda executable. The active environment can therefore supply skills without needing its own Python or plugin installation.
 
-`list`, `install`, and `remove` select a source with either `-n NAME` or `-p PREFIX`. Without either, conda uses its default target, normally the active environment or base. The source must already exist. These commands do not download packages, create environments, or search all environments.
+`list` and `link` use conda's default target, normally the active environment or base. Quickstart's installed-skill branch uses the same default. To read from a separate source without activating it, pass `-n NAME` or `-p PREFIX`. The source must already exist. These commands do not download packages, create environments, or search all environments.
 
-Removal checks the link against the selected source. Choosing a different environment can cause a conflict even when both environments contain a skill with the same name.
+`unlink` is independent of the active environment and accepts no source-selection flags. It follows the destination symlink's target and verifies that it matches a recorded conda skill, without scanning the environment registry. An absent destination needs no source lookup. Broken or unverifiable targets require inspection and explicit `--force`. See {doc}`../how-to/troubleshooting`.
 
 ## Where does the agent look?
 
@@ -32,9 +32,9 @@ The destination is the current directory unless you choose your home with `--glo
 For an installed skill named `review-notes` in environment `development`, these commands use the same source with different destinations:
 
 ```sh
-conda skill install review-notes -n development
-conda skill install review-notes -n development --backend claude
-conda skill install review-notes -n development --global
+conda skill link review-notes -n development
+conda skill link review-notes -n development --backend claude
+conda skill link review-notes -n development --global
 ```
 
 Substitute your environment and discovered skill name. `--global` changes only the destination. It does not select base or search other environments. Even when running from your home directory, mutations require explicit `--global`. Read-only `status` can inspect the current directory without it.

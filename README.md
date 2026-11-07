@@ -32,7 +32,7 @@ conda skill --help
 
 Run these commands from the repository root. The first supplies build requirements and runtime dependencies, which editable installs do not resolve. If another prefix owns your conda executable, replace `-n base` with `-p /path/to/conda-prefix` in both commands.
 
-The [first-use tutorial](https://jezdez.github.io/conda-skills/tutorials/skill-forge/) takes you from downloading a skill package to reviewing its instructions, connecting it to a project, and removing the link.
+The [first-use tutorial](https://jezdez.github.io/conda-skills/tutorials/skill-forge/) creates and activates a new `skill-demo` environment, then uses `conda skill list` and `conda skill link` to review and connect a skill to a project. Install the plugin before activating that environment. Conda's initialized shell keeps using the conda executable that owns the plugin.
 
 See [installation](https://jezdez.github.io/conda-skills/how-to/installation/) for PyPI and local-artifact alternatives. Installing the plugin in an unrelated environment does not register it with another conda executable.
 
@@ -52,6 +52,8 @@ See [installation](https://jezdez.github.io/conda-skills/how-to/installation/) f
 - [Troubleshooting](https://jezdez.github.io/conda-skills/how-to/troubleshooting/)
 
 The default destination is `.agents/skills/` under the current directory. Use `--backend claude` for `.claude/skills/` and `--global` for your home directory. Read skill content before exposing it to an agent. The plugin does not execute instructions or verify their trustworthiness.
+
+`conda skill unlink NAME` removes the destination link independently of the active environment, leaving its package installed. It verifies the link's target against conda package records. For a broken or unverifiable target, inspect `conda skill status` before using `--force`. That option removes only a symlink and never bypasses redirected-parent checks. Explicit `-n`/`-p` source overrides for `list` and `link` are covered in [Use an installed skill](https://jezdez.github.io/conda-skills/how-to/use-an-installed-skill/).
 
 ## Development
 

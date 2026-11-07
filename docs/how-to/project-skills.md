@@ -2,7 +2,7 @@
 
 Use conda-workspaces when teammates need the same skill package versions. The manifest declares the packages, and the lockfile records the resolved builds. Each person installs that environment, reviews the skill files, and creates their own project links.
 
-For a one-off installation, {doc}`use-an-installed-skill` is enough. This guide assumes `conda skill --help` works. See {doc}`installation` for setup.
+For linking a skill without a shared environment definition, {doc}`use-an-installed-skill` is enough. This guide assumes `conda skill --help` works. See {doc}`installation` for setup.
 
 ## Add a skills environment
 
@@ -51,7 +51,7 @@ The paths above use conda-workspaces' default environment directory. If you cust
 After reviewing the files:
 
 ```sh
-conda skill install polars -p .conda/envs/skills
+conda skill link polars -p .conda/envs/skills
 conda skill status
 ```
 
@@ -68,9 +68,9 @@ Do not regenerate the lockfile during routine setup: that requests a fresh solve
 Remove the project link before deleting or changing its source:
 
 ```sh
-conda skill remove polars -p .conda/envs/skills
+conda skill unlink polars
 ```
 
-Repeat with the backend and scope originally used. To stop installing the package, remove its dependency from the manifest, regenerate and review the lockfile, then install the locked environment. If the source has already gone, use {doc}`troubleshooting` to inspect and remove the stale link safely.
+Repeat with the backend and scope originally used. Unlinking identifies the source from the destination symlink, so it needs no source override. To stop installing the package, remove its dependency from the manifest, regenerate and review the lockfile, then install the locked environment. If the source has already gone, use {doc}`troubleshooting` to inspect and remove the stale link safely.
 
 See {doc}`../demos` for the recorded workflow and {doc}`../explanation/agent-discovery` for the distinction between skill packages and the libraries your code runs.

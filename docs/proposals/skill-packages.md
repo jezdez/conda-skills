@@ -73,7 +73,7 @@ Conformance to this layout does not establish publisher identity, archive integr
 
 This proposal does not prescribe agent discovery directories such as `.agents/skills/` or `.claude/skills/`, whether a frontend copies or symlinks content, interactive selection, project configuration, or client reload behavior. It also does not introduce a registry, package metadata field, signing format, schema, or mandatory implementation library.
 
-The source checkout layout is unrestricted. Keeping a recipe beside `SKILL.md` or under `recipe/` does not change the installed package contract. Authoring with `conda skill init` is optional.
+The source checkout layout is unrestricted. Keeping a recipe beside `SKILL.md` or under `recipe/` does not change the required installed paths. Authoring with `conda skill init` is optional.
 
 ## Compatibility and open decisions
 

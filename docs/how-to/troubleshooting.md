@@ -20,9 +20,9 @@ Conda's package record must contain the exact path `share/agent-skills/<name>/SK
 
 Discovery fails if a package contains malformed frontmatter, two packages claim the same skill, or a skill path escapes its environment. Correct or replace the source package through conda before retrying.
 
-## Installation refuses an existing destination
+## Linking refuses an existing destination
 
-Run `conda skill status` with the same `--backend` and `--global` settings used for installation. A regular file or directory, a link to a different source, and a broken link all block installation. There is no force flag.
+Run `conda skill status` with the same `--backend` and `--global` settings used for linking. A regular file or directory, a link to a different source, and a broken link all block linking. There is no force flag.
 
 If the entry belongs to another tool, manage it through that tool or choose a different project or backend. Review and preserve an existing directory's contents before removing it. The plugin reuses a link to the same resolved source without replacing it.
 
@@ -30,9 +30,26 @@ If the entry belongs to another tool, manage it through that tool or choose a di
 
 `conda skill status` works without the source environment and reports the destination and resolved target. Check whether the source package was removed, the environment moved, or the project moved independently of a relative target. A target directory lacking `SKILL.md` is also reported as broken.
 
-If the original package-owned source still exists, remove its matching link with `conda skill remove <name> -p <original-prefix>` before changing the source. If ownership is no longer available, automatic removal cannot proceed. Inspect and remove only the stale symlink, then install from a valid source environment again.
+If the original package-owned source still exists, remove its link with `conda skill unlink <name>` before changing the source. The command identifies the source from the destination symlink, independently of your active environment. Broken or unverifiable targets are refused with guidance to inspect status before using `--force`.
 
-For the tutorial's project-local `review-notes` link, inspect first:
+For a project-local `review-notes` link, inspect the destination and target:
+
+```sh
+conda skill status
+```
+
+Confirm that the row identifies the stale symlink you intend to remove. If it does, remove only that link:
+
+```sh
+conda skill unlink review-notes --force
+conda skill status
+```
+
+Use the same `--backend` and `--global` settings on these commands as for the original link. `--force` never removes a regular file or directory, deletes package files, or bypasses redirected-parent checks. If inspection shows a real directory, stop and preserve its contents. After cleanup, `conda skill link <name> -p <new-prefix>` can create a link from another valid source. Substitute an actual discovered skill name and source prefix for the placeholders, or omit `-p` to use the active environment.
+
+### Manual inspection and removal
+
+If the plugin is unavailable, inspect the exact symlink with your shell before removing it manually:
 
 ::::{tab-set}
 
@@ -65,7 +82,7 @@ cmd /c rmdir .agents\skills\review-notes
 
 ::::
 
-Adapt the exact path for your backend and scope. Do not add a trailing separator or use recursive deletion: the operation should remove the link itself, not traverse its target. If inspection shows a real directory, stop and preserve its contents. After cleanup, `conda skill install <name> -p <new-prefix>` can create a new link. Substitute an actual discovered skill name and source prefix for the placeholders.
+Adapt the exact path for your backend and scope, and check that its parent directories do not redirect elsewhere. Do not use manual removal to bypass the plugin's redirected-parent refusal. Do not add a trailing separator or use recursive deletion: the operation should remove the link itself, not traverse its target. If inspection shows a real directory, stop and preserve its contents.
 
 ## A client directory is redirected
 
@@ -75,11 +92,11 @@ The plugin rejects symlinked or redirected components such as `.agents` or `.age
 
 Enable Developer Mode or obtain directory-symlink privileges according to your system policy. The plugin reports the operating-system error and does not silently copy the skill. Source and destination on different drives use an absolute target, so moving that source later requires relinking.
 
-## Removal fails or leaves files behind
+## Unlinking fails or leaves files behind
 
-Use the same source prefix, backend, and scope as installation. The source skill must still be package-owned, and the destination must be a symlink to that source. If the link is already absent, removal succeeds without changing anything, provided the plugin can still discover the source skill.
+Use the same backend and scope as linking. No source flag or activation is needed. The destination symlink's target must match a recorded conda skill unless you explicitly use `--force` after inspection. If the link is already absent, unlinking succeeds without changing anything or looking up a source. A regular file, directory, or redirected parent is refused even with `--force`.
 
-Removal leaves source package files and empty `.agents/skills/` or `.claude/skills/` directories intact. To remove the package too, uninstall it with conda after removing its links.
+Unlinking leaves source package files and empty `.agents/skills/` or `.claude/skills/` directories intact. To uninstall the package too, follow {ref}`remove-a-skill-completely`. Use the package name from `conda skill list`, not necessarily the skill name, and review conda's removal plan before confirming.
 
 ## Output is JSON unexpectedly
 
@@ -90,10 +107,10 @@ The plugin follows conda's configured JSON mode, including `CONDA_JSON=true`. Ch
 During local testing with conda-rattler-solver 26.10.2, channel loading failed with `Object of type bytes is not JSON serializable` while processing `attestations_sha256`. This happened before conda-skills ran. If you encounter that exact error, retry with libmamba for the affected package command:
 
 ```sh
-conda create --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+conda create --solver libmamba -n skill-demo --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
 ```
 
-For `conda workspace lock`, which has no solver flag, select libmamba for the current invocation in Bash or zsh:
+As in the tutorial, use an unused environment name. Inspect `conda env list` before retrying if the failed command may have created one. For `conda workspace lock`, which has no solver flag, select libmamba for the current invocation in Bash or zsh:
 
 ```sh
 CONDA_SOLVER=libmamba conda workspace lock

@@ -10,18 +10,22 @@ The recording starts with the plugin installed and an empty temporary project. I
 :alt: Terminal recording of a Polars skill package downloaded from skill-forge, discovered, previewed, linked, and unlinked.
 ```
 
-Text equivalent, from a new tutorial project:
+Text equivalent, from a new temporary project with conda shell integration enabled. The recording creates its source at an explicit sibling path so it cannot select an unrelated named environment:
 
 ```sh
 conda create --yes --solver libmamba --prefix ../skills --override-channels -c https://prefix.dev/skill-forge "agent-skill-polars==0.0.8"
-conda skill list -p ../skills
-bat --paging=never --line-range 1:18 ../skills/share/agent-skills/polars/SKILL.md
-conda skill install polars -p ../skills
+conda activate ../skills
+conda skill list
+bat --paging=never --line-range 1:18 "$CONDA_PREFIX/share/agent-skills/polars/SKILL.md"
+conda skill link polars
 conda skill status
-conda skill remove polars -p ../skills
+conda skill unlink polars
+conda deactivate
 ```
 
 This version has no runtime dependencies, so the recording only needs the skill-forge channel. The tutorial also includes conda-forge for packages that need it. Only 18 lines are previewed here. Read the complete instructions and supporting files before linking a skill yourself. Bat is optional: an editor works too. Follow {doc}`tutorials/skill-forge` for setup and cleanup.
+
+The demo environment is removed when the recording ends. The active environment supplies the source for `list` and `link`, so neither needs `-p`. The written tutorial uses an explicitly unused environment name instead. Unlinking works from the destination independently of the active environment. Package removal remains a separate conda command.
 
 ## Reproduce project skills
 
@@ -41,7 +45,7 @@ Text equivalent:
 conda workspace lock
 conda workspace install --locked -e skills
 conda skill list -p .conda/envs/skills
-conda skill install polars -p .conda/envs/skills
+conda skill link polars -p .conda/envs/skills
 conda skill status
 ```
 
@@ -61,19 +65,19 @@ The POSIX commands are:
 mv ../skills ../skills-moved
 conda skill status
 ls -ld .agents/skills/review-notes
-unlink .agents/skills/review-notes
-conda skill install review-notes -p ../skills-moved
+conda skill unlink review-notes --force
+conda skill link review-notes -p ../skills-moved
 conda skill status
 ```
 
-The `mv` deliberately breaks a link to a temporary, data-only environment. Do not use it to relocate a general conda environment: executables may embed their original path. In a real incident, restore the source or recreate the environment at its intended path. Inspect the exact symlink before using `unlink`. Never substitute recursive deletion. See {doc}`how-to/troubleshooting` for recovery options and PowerShell instructions.
+The `mv` deliberately breaks a link to a temporary, data-only environment. Do not use it to relocate a general conda environment: executables may embed their original path. In a real incident, restore the source or recreate the environment at its intended path. Inspect the exact symlink before using `unlink --force`: the override skips source verification but still refuses regular files, directories, and redirected parent directories. It never removes the package. See {doc}`how-to/troubleshooting` for recovery options and PowerShell instructions.
 
 ## Use an installed skill
 
 The example package is built and installed in a temporary environment before recording. The commands list and review the skill, create and inspect its project link, then remove the link. The installed package stays in place.
 
 ```{image} ../demos/use-a-skill.gif
-:alt: Terminal recording showing list, source review, install, status, and remove for the review-notes skill.
+:alt: Terminal recording showing list, source review, link, status, and unlink for the review-notes skill.
 ```
 
 After installing the package in `../skills`, run the following commands. Bat's flags are included so you do not need the recording's shell configuration:
@@ -81,9 +85,9 @@ After installing the package in `../skills`, run the following commands. Bat's f
 ```sh
 conda skill list -p ../skills
 bat --paging=never --style=plain ../skills/share/agent-skills/review-notes/SKILL.md
-conda skill install review-notes -p ../skills
+conda skill link review-notes -p ../skills
 conda skill status
-conda skill remove review-notes -p ../skills
+conda skill unlink review-notes
 ```
 
 For a guided exercise that includes building the example package, follow {doc}`tutorials/build-a-skill-package`. If your package is already installed, use {doc}`how-to/use-an-installed-skill`.

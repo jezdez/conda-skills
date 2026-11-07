@@ -1,14 +1,18 @@
 # Sourced by the recordings; all mutations stay in a disposable directory.
+set +m
 DEMO_REPO="$PWD"
 export PATH="$DEMO_REPO/.conda/envs/build/bin:$PATH"
 # Bypass aliases and the base shell function installed by conda init.
 unalias conda 2>/dev/null || true
+export CONDA_AUTO_ACTIVATE=false
+eval "$("$DEMO_REPO/.conda/envs/build/bin/python" -m conda shell.bash hook)"
 conda() {
-    if [ "$1" = "workspace" ]; then
-        "${DEMO_WORKSPACES_CONDA:?Set DEMO_WORKSPACES_CONDA to the conda executable with conda-workspaces installed}" "$@"
-    else
-        "$DEMO_REPO/.conda/envs/build/bin/python" -m conda "$@"
-    fi
+    case "$1" in
+        workspace)
+            "${DEMO_WORKSPACES_CONDA:?Set DEMO_WORKSPACES_CONDA to the conda executable with conda-workspaces installed}" "$@" ;;
+        activate|deactivate) __conda_activate "$@" ;;
+        *) "$DEMO_REPO/.conda/envs/build/bin/python" -m conda "$@" ;;
+    esac
 }
 DEMO_ROOT="$(mktemp -d /tmp/skills-demo.XXXXXX)"
 trap 'rm -rf "$DEMO_ROOT"' EXIT
@@ -19,6 +23,7 @@ export CONDARC="$DEMO_ROOT/condarc"
 printf '{}\n' > "$CONDARC"
 export CONDA_NO_PLUGINS=false CONDA_JSON=false
 export CONDA_PKGS_DIRS="$DEMO_ROOT/package-cache"
+export CONDA_ENVS_PATH="$DEMO_ROOT/envs"
 export RATTLER_CACHE_DIR="$DEMO_ROOT/rattler-cache"
 export CONDA_NOTIFY_OUTDATED_CONDA=false
 export CONDA_SOLVER=libmamba

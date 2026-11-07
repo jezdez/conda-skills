@@ -6,12 +6,13 @@ Run `conda skill` with a subcommand. The installed distribution and plugin entry
 
 ## Options by command
 
-| Option | `list` | `status` | `install` | `remove` | `init` | `quickstart` |
+| Option | `list` | `status` | `link` | `unlink` | `init` | `quickstart` |
 | --- | --- | --- | --- | --- | --- | --- |
-| `-n NAME`, `--name NAME` | Yes | No | Yes | Yes | No | Yes |
-| `-p PREFIX`, `--prefix PREFIX` | Yes | No | Yes | Yes | No | Yes |
+| `-n NAME`, `--name NAME` | Yes | No | Yes | No | No | Yes |
+| `-p PREFIX`, `--prefix PREFIX` | Yes | No | Yes | No | No | Yes |
 | `--backend {agents,claude}` | No | Yes | Yes | Yes | No | Prompt |
 | `--global` | No | Yes | Yes | Yes | Yes | Yes |
+| `--force` | No | No | No | Yes | No | No |
 | `--description TEXT` | No | No | No | No | Yes | Prompt |
 | `--json` | Yes | Yes | Yes | Yes | Yes | Rejected |
 | `--console {classic,json}` | Yes | Yes | Yes | Yes | Yes | Yes |
@@ -19,7 +20,7 @@ Run `conda skill` with a subcommand. The installed distribution and plugin entry
 | `-q`, `--quiet` | Yes | Yes | Yes | Yes | Yes | Yes |
 | `-h`, `--help` | Yes | Yes | Yes | Yes | Yes | Yes |
 
-Put these options after the subcommand. `-n` and `-p` are mutually exclusive. Without either, conda chooses its default target environment, normally the active environment or base if none is active. A missing source environment is an error. Lookup does not create it.
+Put these options after the subcommand. For `list`, `link`, and quickstart's installed-skill branch, `-n` and `-p` are mutually exclusive source overrides. Without either, conda chooses its default target environment, normally the active environment or base if none is active. A missing source environment is an error. Lookup does not create it. `unlink` does not select a source environment.
 
 The default backend is `agents`. The default destination root is the current working directory, not a discovered Git or workspace root. `--global` selects the home directory. See {doc}`../explanation/agent-discovery` for destination paths and examples.
 
@@ -55,10 +56,10 @@ Inspect the selected destination directory without resolving a source environmen
 
 Status does not parse frontmatter or validate the contents of a linked directory. A link made by another tool can appear as `linked`. A regular directory is `unmanaged` even if it contains a valid skill.
 
-## `install`
+## `link`
 
 ```text
-conda skill install SKILL_NAME [-n NAME | -p PREFIX] [--backend {agents,claude}] [--global] [--json]
+conda skill link SKILL_NAME [-n NAME | -p PREFIX] [--backend {agents,claude}] [--global] [--json]
 ```
 
 Discover the selected environment's skills and create a directory symlink for `SKILL_NAME`. Use the skill directory name shown by `list`, not the owning package name. Missing destination directories are created. This command does not download or install conda packages.
@@ -67,17 +68,17 @@ An existing symlink resolving to the same source is reused. Any other file, dire
 
 Targets are relative when source and destination are on the same drive, and absolute across Windows drives. If directory symlink creation fails, the command reports an error without falling back to copies. Human success output starts with `Linked` and contains the skill name and link path.
 
-## `remove`
+## `unlink`
 
 ```text
-conda skill remove SKILL_NAME [-n NAME | -p PREFIX] [--backend {agents,claude}] [--global] [--json]
+conda skill unlink NAME [--backend {agents,claude}] [--global] [--force] [--json]
 ```
 
-Find the named skill in the selected source environment and remove the destination symlink only if it resolves to that source. The tool that originally made the link does not matter. Package files are never deleted, and empty parent directories remain.
+Inspect the named destination symlink and validate that its target matches a recorded conda skill with the same name before removing the link. This is independent of the active environment: the target identifies the source to check, without scanning the environment registry. The tool that originally made the link does not matter. Package files are never deleted, and empty parent directories remain.
 
-An absent destination is a successful no-op, but the source skill must still be discoverable. An unrelated entry or redirected client directory is an error. Human output is `Removed link for SKILL_NAME.` or `No link to remove for SKILL_NAME.`
+An absent destination is a successful no-op without any source lookup. A broken or unverifiable target is refused with guidance to inspect `status`, then use `--force` if removal is intended. `--force` skips target verification and removes only the destination symlink. It never removes a regular file or directory and does not bypass redirected-parent checks. Human output is `Removed link for NAME.` or `No link to remove for NAME.`
 
-Remove links before deleting source packages or environments. When ownership can no longer be established, follow the manual recovery procedure in {doc}`../how-to/troubleshooting`.
+Remove links before deleting source packages or environments. If the source is already gone, follow the inspection and forced-unlink procedure in {doc}`../how-to/troubleshooting`.
 
 ## `init`
 
@@ -103,15 +104,15 @@ JSON output is one object with `name`, the absolute directory `path`, and the ab
 conda skill quickstart [-n NAME | -p PREFIX] [--global]
 ```
 
-Run an interactive guide to create a skeleton or link installed skills. Both stdin and stdout must be terminals. Redirected input or output fails before prompting, with guidance to use `init`, `list`, or `install`. JSON mode is rejected, including when enabled through conda configuration or `CONDA_JSON=true`.
+Run an interactive guide to create a skeleton or link installed skills. Both stdin and stdout must be terminals. Redirected input or output fails before prompting, with guidance to use `init`, `list`, or `link`. JSON mode is rejected, including when enabled through conda configuration or `CONDA_JSON=true`.
 
 Choose `new` to enter a name and description, select a destination scope, and preview the new directory. Confirmation invokes the same skeleton generator as `init`. This branch does not look up a source environment.
 
 Choose `link` to discover package-owned skills in the environment selected by `-n`, `-p`, or conda's default. Select one or more displayed numbers separated by spaces or commas, or enter `all`. Nothing is selected by default, and `cancel` exits without writes. Repeated numbers are treated as one selection. Review every selected source path and description, then choose the `agents` or `claude` backend.
 
-Review every selected skill's instructions and supporting files before confirming. Package ownership does not establish trust. The guide previews every destination and checks the whole selection for conflicts before confirmation. It then calls the same linking operation as `install` for each skill. Existing matching links are reused, and unselected links are left alone. This is not a transaction: filesystem changes or failures during installation can leave earlier links in place.
+Review every selected skill's instructions and supporting files before confirming. Package ownership does not establish trust. The guide previews every destination and checks the whole selection for conflicts before confirmation. It then calls the same linking operation as `link` for each skill. Existing matching links are reused, and unselected links are left alone. This is not a transaction: filesystem changes or failures during linking can leave earlier links in place.
 
-The scope prompt offers `project` and `home`. Choosing `home` without starting the command with `--global` fails without writes. The same guard applies when the current project directory is the home directory. With `--global`, the scope prompt still lets you choose the project.
+The scope prompt offers `project` (the displayed current directory) and `home`. It defaults to `home` with `--global`, otherwise `project`. You can explicitly choose `project` even with `--global`. Choosing `home` without starting the command with `--global` fails without writes. The same guard applies when the current directory is the home directory. No upward project-root search occurs.
 
 Confirmation defaults to no. Choosing `cancel` at the first prompt, declining confirmation, or interrupting input before confirmation makes no changes.
 
@@ -119,4 +120,4 @@ The guide follows fixed prompts without AI. It does not execute skill content, d
 
 ## Exit status
 
-Successful operations exit with status zero, including repeated installation of the same link and removal when the destination is already absent. Validation, lookup, filesystem, and argument errors produce a nonzero exit status through conda's error handling. Do not parse human error text as a stable interface.
+Successful operations exit with status zero, including repeated linking to the same source and unlinking when the destination is already absent. Validation, lookup, filesystem, and argument errors produce a nonzero exit status through conda's error handling. Do not parse human error text as a stable interface.

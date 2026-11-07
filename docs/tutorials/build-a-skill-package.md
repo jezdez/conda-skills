@@ -77,16 +77,16 @@ Look for `review-notes` from package `conda-skills-example`, version `0.1.0`. Th
 From the temporary project, run:
 
 ```sh
-conda skill install review-notes -p ../source-env
+conda skill link review-notes -p ../source-env
 conda skill status
 ```
 
 You should see `Linked review-notes at` followed by the project's absolute `.agents/skills/review-notes` path, then a status entry marked `linked`. The link points at the complete source directory: reading `.agents/skills/review-notes/SKILL.md` reads the packaged file.
 
-Running the install command again reuses the matching link:
+Running the link command again reuses the matching link:
 
 ```sh
-conda skill install review-notes -p ../source-env
+conda skill link review-notes -p ../source-env
 conda skill status --json
 ```
 
@@ -97,12 +97,12 @@ The JSON result is an array with one entry. Its `name` is `review-notes`, its `s
 ## Remove the link before the source
 
 ```sh
-conda skill remove review-notes -p ../source-env
+conda skill unlink review-notes
 conda skill status
 conda skill list -p ../source-env
 ```
 
-You should see `Removed link for review-notes.`, followed by `No skill entries found.` The final list still contains the source skill because removing a link does not uninstall its package.
+You should see `Removed link for review-notes.`, followed by `No skill entries found.` Unlinking identifies the source from the destination symlink, without a source flag. The final list still contains the source skill because removing a link does not uninstall its package.
 
 After unlinking, delete the temporary source environment:
 

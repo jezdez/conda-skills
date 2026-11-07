@@ -61,7 +61,7 @@ The package file is `conda-dist/noarch/conda-skills-example-0.1.0-0.conda`. The 
 
 Install the package into a new disposable prefix using `conda create --prefix <prefix> <artifact>`, then run `conda skill list -p <prefix>` with a conda executable that has the plugin installed. Follow {doc}`../tutorials/build-a-skill-package` for the complete POSIX and PowerShell commands.
 
-Before distributing the package, test that the plugin can discover and validate the installed skill, then check linking, status, and removal. A successful build alone does not cover these operations. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/skill-safety` for the limits of package ownership.
+Before distributing the package, test that the plugin can discover and validate the installed skill, then check linking, status, and unlinking. A successful build alone does not cover these operations. Review every packaged file, including support scripts, separately from those checks. See {doc}`../explanation/skill-safety` for the limits of package ownership.
 
 ## Pin sources for distribution
 

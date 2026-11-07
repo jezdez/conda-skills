@@ -4,7 +4,9 @@ Install the plugin into the environment that runs conda, usually `base`. It requ
 
 The commands below use `-n base` for a standard conda installation. If your conda executable belongs to another prefix, replace `-n base` with `-p /path/to/conda-prefix` throughout, using its actual path.
 
-Start with the conda channel instructions below. If the package version you need is unavailable, use a [local package](#use-a-local-conda-package) or [checkout](#install-an-unpublished-checkout). The other sections are alternative installation methods, not steps you need to follow in sequence.
+Install the plugin before activating an environment containing your skill packages. In a standard initialized shell, the `conda` shell function continues to use base's conda executable after activation. `conda skill list` and `link` then read from the active environment by default. Activation requires conda's shell integration. If it is unavailable, follow your conda installation's shell initialization instructions and reopen the terminal.
+
+For published releases, start with the conda channel instructions below. If the package version you need is unavailable, use a [local package](#use-a-local-conda-package) or [checkout](#install-an-unpublished-checkout). The sections are alternative installation methods, not steps you need to follow in sequence.
 
 ## Install from the jezdez channel
 

@@ -62,7 +62,7 @@ The documentation task checks references and treats warnings as errors (`-W -n`)
 
 Run affected tutorial commands in disposable state: Sphinx does not execute shell examples or check whether an agent can discover skills. The local-build tutorial uses the recipe under `docs/examples/`. Report which operating systems and shell variants you exercised. To update the recordings, follow `demos/README.md`.
 
-Install the build environment with `conda workspace install --locked -e build`, then run `conda task run -e build test-example`. This builds that recipe and checks the install, list, link, status, and remove workflow in a temporary environment and project.
+Install the build environment with `conda workspace install --locked -e build`, then run `conda task run -e build test-example`. This builds that recipe and checks package installation, skill listing, linking, status, and unlinking in a temporary environment and project.
 
 ## Packaging changes
 

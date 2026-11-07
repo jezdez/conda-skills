@@ -32,9 +32,15 @@ See {doc}`skill-safety` for what the checks establish and what remains your deci
 
 ## Why separate package installation from skill linking?
 
-You may want to inspect a package before using it, or use a skill in one project but not another. Conda installs the files in an environment. The `conda skill install` command makes a selected skill available through a project or home-directory link. Removing that link leaves the package installed.
+You may want to inspect a package before using it, or use a skill in one project but not another. Conda installs the files in an environment. The `conda skill link` command makes a selected skill available through a project or home-directory link. `conda skill unlink` removes that link and leaves the package installed.
 
 See {doc}`agent-discovery` for how the source environment and destination are chosen independently.
+
+## How do I remove a skill and its package?
+
+Use `conda skill unlink NAME` to remove its project or home-directory link, then `conda remove PACKAGE` in the source environment to uninstall the package. The skill and package names may differ. Repeat unlinking for other destinations that use the package, and review conda's transaction plan before confirming removal.
+
+There is no automatic package removal through `unlink`. Other projects may still use the files, and one package may supply several skills or software. If the source is already gone, inspect the broken link with `status` before removing it with `unlink --force`. Follow {ref}`remove-a-skill-completely` for the full procedure.
 
 ## What happens when I update a skill package?
 

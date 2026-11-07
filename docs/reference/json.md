@@ -64,10 +64,10 @@ A broken link still has a target string, even if the target does not exist. A `l
 
 With `status --all --json`, the result remains one array. Each entry adds a string `backend` field (`agents` or `claude`). Entries are grouped in that backend order and sorted by name within each group. The default single-backend output is unchanged. An error inspecting either directory fails the command before it emits a partial array. `--global` selects home scope for both directories, without a source environment lookup.
 
-## `install`
+## `link`
 
 ```sh
-conda skill install review-notes -p /path/to/source-env --json
+conda skill link review-notes -p /path/to/source-env --json
 ```
 
 The result is an object with string fields `name` and `path`, whether the command creates a link or reuses an existing matching link.
@@ -76,13 +76,13 @@ The result is an object with string fields `name` and `path`, whether the comman
 {"name": "review-notes", "path": "/path/to/project/.agents/skills/review-notes"}
 ```
 
-## `remove`
+## `unlink`
 
 ```sh
-conda skill remove review-notes -p /path/to/source-env --json
+conda skill unlink review-notes --json
 ```
 
-The result is an object with string `name` and boolean `removed`. `true` means the matching link was removed, while `false` means the destination was absent. Both outcomes require a valid, discoverable source skill.
+The result is an object with string `name` and boolean `removed`. `true` means the destination symlink was removed, while `false` means the destination was absent. An absent destination needs no source lookup. By default, an existing link's target must match a recorded conda skill. After reviewing a broken or unverifiable link, `--force --json` removes only that symlink and returns the same result shape. Neither mode selects the active environment as a source or removes package files.
 
 ```json
 {"name": "review-notes", "removed": true}

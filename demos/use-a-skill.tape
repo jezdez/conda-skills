@@ -26,7 +26,7 @@ Sleep 3s
 Type "clear"
 Enter
 Sleep 500ms
-Type "conda skill install review-notes -p ../skills"
+Type "conda skill link review-notes -p ../skills"
 Enter
 Wait /\$/
 Sleep 2s
@@ -34,7 +34,7 @@ Type "conda skill status"
 Enter
 Wait /\$/
 Sleep 2s
-Type "conda skill remove review-notes -p ../skills"
+Type "conda skill unlink review-notes"
 Enter
 Wait /\$/
 Sleep 2s

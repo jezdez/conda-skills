@@ -6,39 +6,43 @@ The skill comes from Pavel Zwerschke's [skill-forge channel](https://prefix.dev/
 
 ## Before you start
 
-Run `conda skill --help`. If the command is unavailable, follow {doc}`../how-to/installation` before continuing. You also need network access to download the example.
+Install the plugin in the environment that owns your conda command, usually `base`, as described in {doc}`../how-to/installation`. Do this before activating the tutorial environment, then check `conda skill --help`. You also need network access to download the example.
+
+Use a shell initialized for conda: `conda activate` needs conda's shell integration, not just an executable on `PATH`. If necessary, follow your conda installation's shell initialization instructions and reopen the terminal. In a standard initialized shell, the `conda` shell function continues to call the base conda executable after activation, so the tutorial environment does not need its own plugin installation.
+
+Run `conda env list` and check that `skill-demo` is unused. If that name already exists, choose a new, unused name and substitute it in every creation, activation, and cleanup command below. Do not reuse an existing environment for this tutorial.
 
 On Windows, directory links require Developer Mode or appropriate privileges. Check your organization's policy before enabling them.
 
-Create a new, empty folder named `skill-forge-tutorial` using your file manager. Inside it, create `project` and open your terminal there. Conda will create a separate `skills` folder next to it:
+Create a new, empty folder named `skill-forge-tutorial` using your file manager. Inside it, create `project` and open your terminal there:
 
 ```text
 skill-forge-tutorial/
   project/       # run the following commands here
-  skills/        # created by conda below
 ```
 
 ## 1. Get the skill
 
-Run this single-line command in Bash, zsh, or PowerShell:
+Create and activate the new environment in Bash, zsh, or PowerShell:
 
 ```sh
-conda create --yes --prefix ../skills --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+conda create -n skill-demo --override-channels -c https://prefix.dev/skill-forge -c conda-forge "agent-skill-polars==0.0.8"
+conda activate skill-demo
 ```
 
-This downloads version `0.0.8` of the skill package into `../skills`. That folder is a conda environment: a place to keep installed packages separate from your project. This particular package contains instructions, not the Polars library.
+Review conda's transaction plan before accepting it. This downloads version `0.0.8` of the skill package into `skill-demo`, a conda environment that keeps these packages separate from your other work. Activation makes it the source for the following skill commands. This particular package contains instructions, not the Polars library. Install the library separately for actual data work.
 
 List the installed skill:
 
 ```sh
-conda skill list -p ../skills
+conda skill list
 ```
 
 You should see skill `polars` from package `agent-skill-polars`, version `0.0.8`. From now on, use the shorter skill name, `polars`, with the `conda skill` commands.
 
 ## 2. Read it before using it
 
-Open `../skills/share/agent-skills/polars/SKILL.md` in your editor. This is the text your agent will read. Read the whole file and inspect any supporting files. Its advice and examples may assume tools or workflows different from yours.
+Open `SKILL.md` inside the directory shown in the listing's Path column. The environment's location depends on your conda configuration, so use that reported path. This is the text your agent will read. Read the whole file and inspect any supporting files. Its advice and examples may assume tools or workflows different from yours.
 
 Only continue if the instructions fit your project and your agent's permissions. Being available on a package channel is not a reason to trust them automatically.
 
@@ -57,11 +61,11 @@ See the [Agent Skills Client Showcase](https://agentskills.io/clients) for suppo
 :sync: backend-agents
 
 ```sh
-conda skill install polars -p ../skills
+conda skill link polars
 conda skill status
 ```
 
-You should see a link at `.agents/skills/polars` and a status row marked `linked`. Open `.agents/skills/polars/SKILL.md`: it refers to the installed file in `../skills`, without making a second copy.
+You should see a link at `.agents/skills/polars` and a status row marked `linked`. Open `.agents/skills/polars/SKILL.md`: it refers to the installed file in `skill-demo`, without making a second copy.
 
 :::
 
@@ -69,11 +73,11 @@ You should see a link at `.agents/skills/polars` and a status row marked `linked
 :sync: backend-claude
 
 ```sh
-conda skill install polars -p ../skills --backend claude
+conda skill link polars --backend claude
 conda skill status --backend claude
 ```
 
-You should see a link at `.claude/skills/polars` and a status row marked `linked`. Open `.claude/skills/polars/SKILL.md`: it refers to the installed file in `../skills`, without making a second copy.
+You should see a link at `.claude/skills/polars` and a status row marked `linked`. Open `.claude/skills/polars/SKILL.md`: it refers to the installed file in `skill-demo`, without making a second copy.
 
 :::
 
@@ -91,9 +95,9 @@ Use the same directory choice as above:
 :sync: backend-agents
 
 ```sh
-conda skill remove polars -p ../skills
+conda skill unlink polars
 conda skill status
-conda skill list -p ../skills
+conda skill list
 ```
 
 :::
@@ -102,27 +106,28 @@ conda skill list -p ../skills
 :sync: backend-claude
 
 ```sh
-conda skill remove polars -p ../skills --backend claude
+conda skill unlink polars --backend claude
 conda skill status --backend claude
-conda skill list -p ../skills
+conda skill list
 ```
 
 :::
 
 ::::
 
-Status should be empty, while the source listing still contains `polars`. Removing the link does not uninstall the package. If your agent already loaded the instructions, restart or reload it as its documentation requires.
+Status should be empty, while the source listing still contains `polars`. Unlinking uses the destination link, independently of the active environment, and does not uninstall the package. If your agent already loaded the instructions, restart or reload it as its documentation requires.
 
 ## Clean up the example
 
-When finished, remove only the tutorial's source environment:
+After removing the link, deactivate and remove only the environment you created for this tutorial:
 
 ```sh
-conda remove --yes --prefix ../skills --all
+conda deactivate
+conda remove -n skill-demo --all
 ```
 
 Leave the project directory, then delete the tutorial directory using your file manager. Do not remove an environment or project that existed before this tutorial.
 
 ## Next steps
 
-When you want to repeat this with another skill, use {doc}`../how-to/use-an-installed-skill`. If you would rather write your own instructions, continue with {doc}`../how-to/create-a-skill`. Version pinning and workspace sharing can wait until you need them.
+When you want to repeat this with another skill or select a source without activating it, use {doc}`../how-to/use-an-installed-skill`. If you would rather write your own instructions, continue with {doc}`../how-to/create-a-skill`. Persistent version pins and workspace sharing can wait until you need them.

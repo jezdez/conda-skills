@@ -42,7 +42,7 @@ The final check requires dated notes for the requested version. Once a release i
 
 Review wheel and source distribution artifacts under `dist/` and conda artifacts under `conda-dist/`. `check-dist` validates Python distribution metadata, `test-wheel` checks the installed wheel, and `build-conda` builds and tests the conda recipe. None of these replaces the source test suite or the first-use tutorial workflow.
 
-Run the tutorial's local example build, install, link, status, and removal sequence in disposable state. Review the rendered documentation after the strict build. Record native platform results separately from lockfile support. A macOS or Linux run does not test Windows symlink behavior.
+Run the tutorial's local example build, package installation, skill linking, status, and unlinking sequence in disposable state. Review the rendered documentation after the strict build. Record native platform results separately from lockfile support. A macOS or Linux run does not test Windows symlink behavior.
 
 ## One-time publisher setup
 

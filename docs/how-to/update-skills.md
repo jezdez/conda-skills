@@ -2,7 +2,7 @@
 
 If you are getting started, follow {doc}`../tutorials/skill-forge` first. You do not need pins or lockfiles to try a skill.
 
-A skill link points to the installed directory's current contents. Updating its conda package can change the instructions an agent sees without another `conda skill install`. Remove links before changing the source package, then review the new files before making them available again.
+A skill link points to the installed directory's current contents. Updating its conda package can change the instructions an agent sees without another `conda skill link`. Remove links before changing the source package, then review the new files before making them available again.
 
 This guide assumes `conda skill --help` works and you have a skill package installed. Examples use skill `polars` from package `agent-skill-polars`, with `0.0.8` as a known version. Use the package name for conda transactions and the skill name for `conda skill` commands. Other packages may contain several skills with different names.
 
@@ -25,13 +25,13 @@ For an ordinary named environment, replace `-p .conda/envs/skills` with `-n skil
 Stop agent sessions that might use the skill. Removing a link does not erase instructions a running client has already loaded.
 
 ```sh
-conda skill remove polars -p .conda/envs/skills
+conda skill unlink polars
 conda skill status
 ```
 
-Use the same source, backend, and destination scope as for installation. For example, append `--backend claude` for `.claude/skills/`, or `--global` for a home link. Repeat this for all skills in the package and all destinations you use. The plugin cannot enumerate links in other projects.
+Use the same backend and destination scope as for linking. For example, append `--backend claude` for `.claude/skills/`, or `--global` for a home link. Repeat this for all skills in the package and all destinations you use. The plugin cannot enumerate links in other projects.
 
-Remove links before uninstalling the source package, even if you intend to replace it immediately. Removal rediscovers the installed skill to verify the destination, which it cannot do after the source disappears or its metadata becomes invalid.
+Remove links before uninstalling the source package, even if you intend to replace it immediately. Unlinking identifies the source from the destination symlink and verifies its package record, independently of the active environment. If the source disappears or becomes unverifiable, inspect `status` before removing the stale link with `--force`, as described in {doc}`troubleshooting`.
 
 ## Update a workspace selection
 
@@ -71,7 +71,7 @@ Review the package selection before installation and the installed files before 
 For a source environment named `skill-env`, first remove its link from the project root:
 
 ```sh
-conda skill remove polars -n skill-env
+conda skill unlink polars
 ```
 
 To request a particular version, including a downgrade to the known `0.0.8` version:
@@ -108,7 +108,7 @@ List the skills again to confirm their names and installed package versions. Ope
 For a workspace source, reconnect only after accepting those changes:
 
 ```sh
-conda skill install polars -p .conda/envs/skills
+conda skill link polars -p .conda/envs/skills
 conda skill status
 ```
 
@@ -131,4 +131,4 @@ Do not run `conda workspace lock` during this rollback: that would produce a new
 
 For an ordinary environment, restore any persistent pin and use `conda install` with the previous version and, where needed, its recorded build and channel. A version-only downgrade may choose different dependencies from the original environment, making it less precise than restoring a complete locked selection.
 
-Review the restored directory before relinking it. Package rollback cannot undo commands an agent already ran, restore changed project data, or clear instructions cached by a client. Handle those separately. If the update left a broken link and normal removal fails, use the inspection procedure in {doc}`troubleshooting`.
+Review the restored directory before relinking it. Package rollback cannot undo commands an agent already ran, restore changed project data, or clear instructions cached by a client. Handle those separately. If the update left a broken link and normal unlinking fails, use the inspection procedure in {doc}`troubleshooting`.

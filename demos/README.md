@@ -29,10 +29,10 @@ Check `"$DEMO_WORKSPACES_CONDA" workspace --help` first. This recording setup ta
 
 `setup.sh` creates a fresh temporary home and project, installs the local example package for the first demo, and removes that temporary directory when the recording shell exits. It does not alter your normal home or install packages into base. Build and environment setup are hidden from the recording and described on the demos page.
 
-The recording shell's `conda` command invokes the build environment's Python explicitly for skill and package operations, and `DEMO_WORKSPACES_CONDA` for workspace operations. This overrides inherited aliases and `conda init` functions. Source the setup only in the disposable recording shell.
+The recording shell's `conda` command invokes the build environment's Python explicitly for skill and package operations, and `DEMO_WORKSPACES_CONDA` for workspace operations. Activation uses conda's shell hook, so the skill-forge demo can select its source through the active environment. Package creation and activation use explicit temporary prefixes, avoiding conda's lookup of named environments outside the recording directory. This overrides inherited aliases and `conda init` functions. Source the setup only in the disposable recording shell.
 
 - `_settings.tape`: shared appearance and timing.
-- `use-a-skill.tape`: list, review, install, status, and remove.
+- `use-a-skill.tape`: list, review, link, status, and unlink.
 - `quickstart.tape`: create authoring files with confirmation.
 - `skill-forge.tape`: download a published skill package and create a project link.
 - `project-skills.toml` and `project-skills.tape`: declare, lock, install, and link a project's skills.

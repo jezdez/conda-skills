@@ -12,11 +12,11 @@ The resulting `package` and `version` fields describe the installed package reco
 
 ## What linking changes
 
-Installation exposes the complete skill directory, including its references and scripts, through a link at a path used by agent clients. The plugin does not execute these files. An agent reading the instructions may later request operations based on them.
+Linking exposes the complete skill directory, including its references and scripts, through a link at a path used by agent clients. The plugin does not execute these files. An agent reading the instructions may later request operations based on them.
 
-Review the instructions and supporting files before linking. Apply your normal package-source policy, inspect changes when updating packages, and use the agent client's own permissions to control what it can read or execute. A source update can change content exposed by an existing link without another `conda skill install` command.
+Review the instructions and supporting files before linking. Apply your normal package-source policy, inspect changes when updating packages, and use the agent client's own permissions to control what it can read or execute. A source update can change content exposed by an existing link without another `conda skill link` command.
 
-Containment checks prevent a skill directory from redirecting to files outside the permitted filesystem boundaries at discovery time. They do not sandbox later agent actions or protect against concurrent modifications of the source files.
+During discovery, containment checks reject skill roots outside the source environment and companion paths outside the skill root. They do not sandbox later agent actions or protect against concurrent modifications of the source files.
 
 ## What status checks
 
@@ -24,11 +24,11 @@ Status checks the destination filesystem without requiring a source environment.
 
 You can therefore inspect links after deleting a source environment, even though discovery is no longer possible. The status table does not establish trust or package ownership.
 
-## Why removal requires the source
+## What unlinking verifies
 
-The plugin has no persistent record of links it created. To remove a link safely, it rediscovers the selected source skill and checks that the destination symlink resolves to that same source. It can remove a matching link created by another tool, but refuses unrelated entries.
+The plugin has no persistent record of links it created. Unlinking inspects the destination symlink's target and validates that it matches a recorded conda skill with the requested name. It does not depend on the active environment or scan the environment registry. A link created by another tool can pass these checks, so the plugin cannot identify which tool created it. An absent destination succeeds without source lookup.
 
-Remove links before uninstalling the source package or deleting its environment. If the source is already gone, automatic removal cannot verify that the link matches it. Inspect the destination and remove the stale symlink manually as described in {doc}`../how-to/troubleshooting`.
+Remove links before uninstalling the source package or deleting its environment. A broken or unverifiable target is refused with guidance to inspect `status` before using `--force`. Forced unlinking removes only the symlink, never package files, a regular file, or a directory. It does not bypass redirected-parent checks. Follow {doc}`../how-to/troubleshooting` before removing a stale link.
 
 ## Pins and hashes
 

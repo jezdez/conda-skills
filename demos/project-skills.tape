@@ -33,7 +33,7 @@ Type "# After reviewing the skill files:"
 Enter
 Type "clear"
 Enter
-Type "conda skill install polars -p .conda/envs/skills"
+Type "conda skill link polars -p .conda/envs/skills"
 Enter
 Wait /\$/
 Type "conda skill status"
