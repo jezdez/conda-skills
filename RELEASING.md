@@ -4,11 +4,11 @@ Hatchling and hatch-vcs derive Python package versions from Git. The preparation
 
 ## Prepare the candidate
 
-Review the changes and their Unreleased entries in `CHANGELOG.md`. Set `context.version` in `recipe/recipe.yaml` to the intended bare release tag. On a clean tagged checkout, hatch-vcs uses that tag as the Python package version. Other checkouts can have development versions containing a commit identifier and a dirty-tree date.
+Review the changes and their Unreleased entries in `CHANGELOG.md`. On a clean tagged checkout, hatch-vcs uses that tag as the Python package version. Other checkouts can have development versions containing a commit identifier and a dirty-tree date. There is no separate version to update in the conda recipe.
 
 `pyproject.toml` declares a dynamic version and a `0.1.0` fallback for development builds without usable version metadata. The fallback does not establish a release, and an untagged Git checkout can still resolve to a different development version. Do not edit the generated `src/conda_skill/_version.py` file.
 
-Local conda builds copy the checkout without relying on Git metadata. The recipe sets `SETUPTOOLS_SCM_PRETEND_VERSION` to `context.version` for those development builds. Release builds instead use the exact published PyPI source archive and its recorded SHA-256, without overriding the version stored in that archive. Do not use a version override to bypass the release check.
+The `build-conda` task resolves the version through Hatch and passes it as `CONDA_SKILLS_VERSION` to rattler-build. The recipe requires this value and has no default. Local builds copy the checkout without Git metadata, so the recipe supplies that resolved version to the Python build through `SETUPTOOLS_SCM_PRETEND_VERSION`. Release builds use the digest-verified published source archive without overriding its stored Python version. Do not use a version override to bypass release checks.
 
 Check the candidate details in the README and installation guide. Keep development installation instructions until the corresponding channel or PyPI release is available. The example package under `docs/examples/` has its own version and is a tutorial fixture, not the plugin distribution.
 
@@ -31,10 +31,10 @@ conda task run -e build check-dist
 conda task run -e build test-wheel
 conda task run -e build build-conda
 conda task run -e build test-example
-conda task run -e build check-release 0.2.0
+conda task run -e build check-release 0.2.1
 ```
 
-`check-release VERSION` compares the bare version argument with Hatchling's resolved package version and the recipe candidate. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.2.0` for the current candidate, not `v0.2.0`.
+`check-release VERSION` compares the bare version argument with Hatchling's resolved package version. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.2.1` for the current candidate, not `v0.2.1`.
 
 Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, expect a development-version mismatch. The task does not create a tag, upload artifacts, or publish a release.
 
@@ -65,13 +65,15 @@ The publication destinations are the `jezdez` channel's `main` label on anaconda
 
 The process combines [conda-advise's release sequence](https://github.com/jezdez/conda-advise/blob/main/.github/workflows/release.yml) with [conda-sigstore's attestation steps](https://github.com/conda-incubator/conda-sigstore/blob/main/.github/workflows/conda.yml). Push an authorized annotated tag such as `0.1.0` on a commit reachable from `main`. Do not prefix the tag with `v` or use leading zeroes. Review native CI results before tagging. The release workflow reruns Python 3.11/3.14 tests and the strict docs build on Linux. It does not query historical CI runs or repeat the complete platform matrix.
 
-`release.yml` checks the tag, resolved Python version, recipe candidate, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata, and a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
+`release.yml` checks the tag, resolved Python version, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata, and a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
 
 After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256` to select the published source in `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds and tests the noarch package once. Local builds without this variable use the checkout. Signing, verification, and upload all use the same stored conda artifact. There is no independent tag-triggered publisher.
 
+Before the build, curl retrieves the source archive directly from PyPI's normalized `conda_skills` source URL with up to three retries, a two-second retry delay, connection/request timeouts, and a 120-second retry window. Transport failures and temporary HTTP errors, including publication-time 404s, may be retried. The SHA-256 check runs after retrieval and fails immediately on a mismatch. Rattler-build separately verifies the recipe's source digest.
+
 The conda artifact receives two attestations: SLSA build provenance and a CEP 27 publication statement naming `https://conda.anaconda.org/jezdez`. Before upload, the workflow verifies the publication bundle against the exact package digest, repository, reusable signer workflow, source commit, tag, and GitHub OIDC issuer, then checks the claimed target channel. The verified `.sigstore.json` bundle is retained as a workflow artifact and is not uploaded to Anaconda.org.
 
-The upload job refuses existing or unverifiable Anaconda.org releases and disables uploader configuration and force overrides. It checks the published distribution and channel index against the local artifact, then installs that exact package in a fresh environment and runs the installed-plugin smoke test. Only after conda verification succeeds does the parent workflow publish the GitHub draft.
+The conda workflow has three jobs: build and test, attest, then publish through the protected `anaconda` environment. The upload job refuses existing or unverifiable Anaconda.org releases and disables uploader configuration and force overrides. A successful uploader result is sufficient for the normal release path. There is no post-upload polling or fresh channel installation. After both package uploads succeed, the parent workflow publishes the GitHub draft.
 
 Attestations identify who built or published particular bytes. They do not establish package safety, authorize a signer for a channel, produce an SBOM, or enable automatic verification in users' conda installations.
 
@@ -97,7 +99,7 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 - If a build or signing step failed before any upload, correct the failure and use the original release commit and artifacts.
 - If PyPI partially uploaded, compare the existing files and digests before completing it. A generic `skip-existing` setting would not verify their bytes and is deliberately absent.
-- If the conda upload succeeded but verification failed, inspect its filename, build, digest, size, and channel label. The normal uploader refuses an existing release. Do not rerun it blindly or add force flags.
+- If the conda upload failed ambiguously, inspect the channel before retrying: it might have uploaded before losing its connection. Compare any existing package with the original artifact and its signing evidence. The normal uploader refuses an existing release. Do not rerun a successful upload or add force flags.
 - If only GitHub finalization failed, confirm both package publications and their evidence, then finalize the existing draft without rebuilding or re-uploading packages.
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
@@ -112,7 +114,7 @@ Recovery completed on November 7, 2026. [Run 42380250727](https://github.com/jez
 
 Independent checks verified the conda publication statement and SLSA provenance, the downloaded channel package, API metadata, repodata, and a fresh channel installation. The conda artifact's SHA-256 is `4f218a5e1b74c397916df746a548a8a21be360978b2e52518f0053ea091d6476`. The wheel and source archive still matched the original PyPI and GitHub digests. The unchanged GitHub draft was finalized as an immutable release, and the temporary `main` deployment permission was removed. Do not rerun the completed upload.
 
-The verification failure is consistent with login-shell cleanup: an explicit `exit 0` runs `.bash_logout`, where Ubuntu's `clear_console` can fail without a console and trigger the error trap at line 6. A test reproduces that exact failure using a failing logout command. The ended runner's logout file was not captured, so this is not proof of its contents. Successful verification now breaks out of the loop and reaches the end of the script normally. Tests cover immediate success, delayed indexing, mismatched hashes, and malformed metadata without real uploads.
+The verification failure was consistent with login-shell cleanup: an explicit `exit 0` runs `.bash_logout`, where Ubuntu's `clear_console` can fail without a console and trigger the error trap at line 6. A diagnostic test reproduced that behavior using a failing logout command. The ended runner's logout file was not captured, so its contents remain unknown. The post-upload verification code and its tests were subsequently removed when publication was simplified for 0.2.1.
 
 ### 0.1.0 publication incident
 
@@ -122,7 +124,7 @@ The one-off recovery used the artifacts from the [original release run](https://
 
 Recovery completed on November 7, 2026. [Run 42322660191](https://github.com/jezdez/conda-skills/actions/runs/42322660191) uploaded the original package but failed in its post-upload verification step before the polling loop. Separate checks verified the publication signature and build provenance, the downloaded package bytes, Anaconda.org distribution metadata, channel repodata, and a fresh channel installation with the plugin smoke test. All matched the original artifact digest `9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d`. The unchanged draft was then finalized as an immutable release and the temporary `main` deployment exception was removed.
 
-The original inspections and the exact read-only verification step later passed on Linux in [diagnostic run 42324229619](https://github.com/jezdez/conda-skills/actions/runs/42324229619). The historical failure remains unexplained. Post-upload verification now reports its failing stage, line, exit status, and escaped inspection output without dumping the environment or upload credential. These diagnostics improve future evidence collection, not proof that the original fault is fixed.
+The original inspections and the exact read-only verification step later passed on Linux in [diagnostic run 42324229619](https://github.com/jezdez/conda-skills/actions/runs/42324229619). The historical failure remains unexplained. Stage, line, exit-status, and escaped-inspection diagnostics were added afterward, then removed with post-upload verification in 0.2.1.
 
 The recovery and diagnostic workflows have been removed from `main`. Their definitions remain in Git history and the linked runs. Do not rerun recovery or upload again: both indexes already contain the immutable 0.1.0 artifacts.
 

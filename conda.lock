@@ -4384,6 +4384,7 @@ packages:
     sha256: e7e51bd2aeb4885f55426e169ab9689c6d5b05549db059a5ea01164f1432fb11
     md5: 05d1f1af9800d90031a893275a415fc5
     license: BSD-3-Clause
+    license_family: BSD
     size: 1513054
     depends:
       - archspec >=0.2.3
@@ -5728,6 +5729,7 @@ packages:
     sha256: f1686f229f6a209bd172001bcac8de3d43a1c3b7507476950eca33641ffe2e00
     md5: b499d3ca5b2a591c98e4552073965468
     license: MIT
+    license_family: MIT
     size: 8964923
     depends:
       - __glibc >=2.17,<3.0.a0
@@ -5882,6 +5884,7 @@ packages:
     sha256: 57ec46a8fa007115ee9d3a2799b46b1660ef552d817e34aa384186bfb88b8997
     md5: b500afa102f4f6fc03c15fc1ccde5cfb
     license: MIT
+    license_family: MIT
     size: 13508459
     depends:
       - libgcc >=15
@@ -6067,6 +6070,7 @@ packages:
     sha256: 2d3863d3315c1c7e79f812b6db7f08616d2d394b4a2b0a6d69e935a5aa1e0e0b
     md5: 9ff3ce5d07b5fabe0923541b3807a949
     license: BSD-3-Clause
+    license_family: BSD
     size: 1511962
     depends:
       - archspec >=0.2.3
@@ -6645,6 +6649,7 @@ packages:
     sha256: 715bb6e5ea67042d7f086ae68041a5c2036c28eb39b52870107c92c789e2862d
     md5: 11e72a4a139fd7c27dff0fb4f56ba3e0
     license: MIT
+    license_family: MIT
     size: 8160218
     depends:
       - __osx >=11.0
@@ -6689,6 +6694,7 @@ packages:
     sha256: 09d2c86758a10ba2d4d94daffaf767804ace6f45197f5c1dcff481506c460465
     md5: 4a713e7d89cfde3f70e542c626c75080
     license: MIT
+    license_family: MIT
     size: 12146936
     depends:
       - __osx >=11.0
@@ -6786,6 +6792,7 @@ packages:
     sha256: 6c0c593c9b5efbc7ea17086e1137ab693cc24c3be527ecb60a2b5097d7140d51
     md5: 37d34615a6133fe9fb0c884c2bd719d0
     license: BSD-3-Clause
+    license_family: BSD
     size: 1542070
     depends:
       - archspec >=0.2.3
@@ -7397,6 +7404,7 @@ packages:
     sha256: 2213926da1e42b752208b9a1c3497721429c4217702295526aaf5d015b7a3e40
     md5: 5282dffdb5146d664202f0f57633afac
     license: MIT
+    license_family: MIT
     size: 9356653
     depends:
       - vc >=14.3,<15
@@ -7459,6 +7467,7 @@ packages:
     sha256: 012c68fc77335e404f827c976cd4160addfb3adefc0ebe317f9e37f54e5c3a5c
     md5: d4d9d119f4c165f870e64dcdc710c52a
     license: MIT
+    license_family: MIT
     size: 13034750
     depends:
       - vc >=14.3,<15
@@ -7595,6 +7604,7 @@ packages:
     sha256: 16ccb640fd076c7de4186481135cb28680d03b315f765c300727d5ee8652ec02
     md5: 4deb5aea55b68f90c4f1264aa700f103
     license: BSD-3-Clause
+    license_family: BSD
     size: 1483020
     depends:
       - archspec >=0.2.3
@@ -7883,6 +7893,7 @@ packages:
     sha256: 1af50aeaefbeb1bda32f3d6d55871a43185005b5e283b9b21b3a0f7f987d5940
     md5: bb740d5d791784b1214e5b6a859c7b1f
     license: BSD-3-Clause
+    license_family: BSD
     size: 1481747
     depends:
       - archspec >=0.2.3
@@ -8087,6 +8098,7 @@ packages:
     sha256: ac08b8600990599b7a7ca669c92e2f069229bcea5f710a27674f5de836d20255
     md5: f51f470a072e0f9874c17144374b9230
     license: BSD-3-Clause
+    license_family: BSD
     size: 1512332
     depends:
       - archspec >=0.2.3

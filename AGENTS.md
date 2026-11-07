@@ -217,16 +217,17 @@ conda task run -e build build
 - Build with Hatchling and hatch-vcs. Derive the Python version from Git and never
   edit the generated `src/conda_skill/_version.py`. The `0.1.0` fallback is for
   development without usable version metadata, not evidence of a release.
-- Keep `recipe/recipe.yaml`'s candidate version equal to the intended release tag.
-  Its build-local `SETUPTOOLS_SCM_PRETEND_VERSION` supplies that version when
+- Resolve the conda build version through Hatch. The build task supplies
+  `CONDA_SKILLS_VERSION`, which the recipe requires without a default. Its
+  build-local `SETUPTOOLS_SCM_PRETEND_VERSION` supplies that resolved version when
   building copied source without Git. Release checks compare the tag with the
-  resolved Python version and recipe candidate. Do not override their version.
+  resolved Python version. Do not override their version.
   Follow `RELEASING.md`. Version checks do not authorize tagging or publishing.
 - Pull requests run native tests and artifact/docs checks. Stable annotated tags
   on main trigger coordinated PyPI and jezdez/main publication. Release conda
   packages come from the digest-verified published source archive, not a rebuild
   of the checkout. Sign and verify the exact artifacts before upload, preserve
-  channel overwrite checks, and publish the GitHub draft only after verification.
+  channel overwrite checks, and publish the GitHub draft after successful uploads.
   Pin actions to full commit SHAs. Do not invent repository or documentation URLs.
   Never tag, push, configure credentials, or publish without explicit authorization.
 - Write PR and issue bodies with one line per paragraph or bullet. Keep commit

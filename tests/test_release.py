@@ -3,7 +3,6 @@ from __future__ import annotations
 import gzip
 import hashlib
 import io
-import json
 import os
 import runpy
 import shutil
@@ -63,40 +62,73 @@ def test_conda_publisher_receives_required_environment_secret() -> None:
     assert publisher["jobs"]["publish"]["environment"]["name"] == "anaconda"
 
 
-@pytest.mark.parametrize(
-    "metadata,inspect_status,message",
-    [
-        ('{"index":{"build":"py_0"}}', 0, ""),
-        ('{"index":{"build":"py_0"}}', 7, "package inspection"),
-        ('{"index":{}}', 0, "package build field"),
-        ('{"index":{"build":""}}', 0, "package build field"),
-        ('{"index":{"build":42}}', 0, "package build field"),
-        ("not JSON", 0, "package build field"),
-    ],
-)
-def test_post_upload_inspection_diagnostics(
-    tmp_path: Path, metadata: str, inspect_status: int, message: str
+def test_conda_release_builds_attests_then_publishes() -> None:
+    """Keep signing and protected, non-overwriting uploads before finalization."""
+    workflows = Path(__file__).parents[1] / ".github/workflows"
+    publisher = yaml.loads((workflows / "publish-conda.yml").read_text())
+    jobs = publisher["jobs"]
+    assert set(jobs) == {"build", "attest", "publish"}
+    assert jobs["attest"]["needs"] == "build"
+    assert set(jobs["publish"]["needs"]) == {"build", "attest"}
+    attest = jobs["attest"]["steps"]
+    assert {
+        "Record GitHub build provenance",
+        "Create CEP 27 publication attestation",
+        "Verify publication evidence before upload",
+    } <= {step.get("name") for step in attest}
+    verification = next(
+        step["run"]
+        for step in attest
+        if step.get("name") == "Verify publication evidence before upload"
+    )
+    assert 'gh attestation verify "${packages[0]}"' in verification
+    assert '--source-digest "$GITHUB_SHA" --source-ref "$GITHUB_REF"' in verification
+    assert jobs["publish"]["environment"]["name"] == "anaconda"
+    preflight = next(
+        step["run"]
+        for step in jobs["publish"]["steps"]
+        if step.get("name") == "Verify unchanged tag and absent channel release"
+    )
+    assert 'if [ "$status" != "404" ]; then' in preflight
+    upload = next(
+        step["run"]
+        for step in jobs["publish"]["steps"]
+        if step.get("name") == "Upload immutable package"
+    )
+    assert "unset ANACONDA_FORCE ANACONDA_SERVER_URL" in upload
+    assert "rattler-build upload --no-config anaconda" in upload
+    assert "--force" not in upload
+    release = yaml.loads((workflows / "release.yml").read_text())
+    assert "publish-conda" in release["jobs"]["publish-github-release"]["needs"]
+
+
+@pytest.mark.parametrize("damage", ["none", "archive"])
+def test_source_retrieval_retries_downloads_not_validation(
+    tmp_path: Path, damage: str
 ) -> None:
-    """Exercise the real pre-poll checks without uploading or querying a channel."""
+    """Download the normalized source URL with bounded retries and check its digest."""
     bash = shutil.which("bash")
-    if not bash or not shutil.which("jq") or not shutil.which("sha256sum"):
+    if not bash or not shutil.which("sha256sum"):
         pytest.skip("Release shell tools are unavailable")
     workflow = yaml.loads(
-        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text(
-            encoding="utf-8"
-        )
+        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text()
     )
     step = next(
         step
-        for step in workflow["jobs"]["publish"]["steps"]
-        if step.get("name") == "Verify indexed package"
+        for step in workflow["jobs"]["build"]["steps"]
+        if step.get("name") == "Verify the published source distribution"
     )
-    package = tmp_path / "package.conda"
-    package.write_bytes(b"package")
-    script = tmp_path / "inspect.sh"
+    archive = b"original source archive"
+    digest = hashlib.sha256(archive).hexdigest()
+    (tmp_path / "archive").write_bytes(
+        b"changed bytes" if damage == "archive" else archive
+    )
+    script = tmp_path / "source.sh"
     script.write_text(
-        'conda() { printf "%s\\n" "$INSPECTION"; return "$INSPECT_STATUS"; }\n'
-        'stat() { printf "7\\n"; }\n' + step["run"].split("for _ in {1..12}; do")[0],
+        "curl() {\n"
+        '  printf "%s\\n" "$@" >> "$RUNNER_TEMP/calls"\n'
+        '  command cp "$RUNNER_TEMP/archive" "${@: -1}"\n'
+        "}\n" + step["run"],
         encoding="utf-8",
     )
     result = subprocess.run(
@@ -106,111 +138,28 @@ def test_post_upload_inspection_diagnostics(
         timeout=10,
         env={
             **os.environ,
-            "PACKAGE": str(package),
-            "INSPECTION": metadata,
-            "INSPECT_STATUS": str(inspect_status),
-            "ANACONDA_API_KEY": "do-not-log",
+            "RUNNER_TEMP": str(tmp_path),
+            "RELEASE_TAG": "0.2.1",
+            "CONDA_SKILLS_SOURCE_SHA256": digest,
         },
     )
-    assert (result.returncode == 0) == (message == ""), result.stderr
-    if message:
-        assert message in result.stderr
-        assert "status=" in result.stderr
-        if not inspect_status:
-            assert json.dumps(metadata) in result.stderr
-    assert "do-not-log" not in result.stdout + result.stderr
-
-
-@pytest.mark.parametrize("response", ["matching", "retry", "mismatch", "malformed"])
-def test_channel_verification_in_login_shell(tmp_path: Path, response: str) -> None:
-    """Check the whole polling step, including login-shell cleanup after success."""
-    bash = shutil.which("bash")
-    if (
-        os.name == "nt"
-        or not bash
-        or not shutil.which("jq")
-        or not shutil.which("sha256sum")
-    ):
-        pytest.skip("POSIX release shell tools are unavailable")
-    workflow = yaml.loads(
-        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text()
-    )
-    step = next(
-        step
-        for step in workflow["jobs"]["publish"]["steps"]
-        if step.get("name") == "Verify indexed package"
-    )
-    package = tmp_path / "package.conda"
-    package.write_bytes(b"package")
-    digest = hashlib.sha256(b"package").hexdigest()
-    fields = {
-        "name": "conda-skills",
-        "version": "0.2.0",
-        "build": "py_0",
-        "build_number": 0,
-        "subdir": "noarch",
-        "noarch": "python",
-        "license": "Apache-2.0",
-        "sha256": digest,
-        "size": 7,
-    }
-    distribution = {
-        "basename": "noarch/package.conda",
-        "version": "0.2.0",
-        "sha256": digest if response != "mismatch" else "0" * 64,
-        "size": 7,
-        "labels": ["main"],
-        "attrs": fields,
-    }
-    (tmp_path / "distribution.json").write_text(json.dumps(distribution))
-    (tmp_path / "repodata.json").write_text(
-        "invalid JSON"
-        if response == "malformed"
-        else json.dumps({"packages.conda": {package.name: fields}})
-    )
-    # Ubuntu's clear_console may fail silently during explicit login-shell exit.
-    (tmp_path / ".bash_logout").write_text(
-        'printf "logout cleanup ran\\n" >&2\nfalse\n'
-    )
-    script = tmp_path / "verify.sh"
-    script.write_text(
-        'conda() { printf \'{"index":{"build":"py_0"}}\\n\'; }\n'
-        'stat() { printf "7\\n"; }\n'
-        'sleep() { printf "retry\\n" >> "$HOME/retries"; }\n'
-        "curl() {\n"
-        '  if [ "$RESPONSE" = retry ] && [ ! -e "$HOME/retries" ]; then return 22; fi\n'
-        '  case "$*" in\n'
-        '    *repodata.json*) command cat "$HOME/repodata.json" ;;\n'
-        '    *) command cat "$HOME/distribution.json" ;;\n'
-        "  esac\n"
-        "}\n" + step["run"],
-        encoding="utf-8",
-    )
-    result = subprocess.run(
-        [bash, "--noprofile", "--norc", "-el", str(script)],
-        capture_output=True,
-        text=True,
-        timeout=15,
-        env={
-            **os.environ,
-            "HOME": str(tmp_path),
-            "PACKAGE": str(package),
-            "RELEASE_TAG": "0.2.0",
-            "RESPONSE": response,
-        },
-    )
-    assert (result.returncode == 0) == (response in {"matching", "retry"}), (
-        result.stderr
-    )
-    if response in {"matching", "retry"}:
-        assert "logout cleanup ran" not in result.stderr
-    else:
-        assert "Could not verify the published package" in result.stderr
-    retries = tmp_path / "retries"
-    expected = {"matching": 0, "retry": 1, "mismatch": 12, "malformed": 12}[response]
-    assert (
-        len(retries.read_text().splitlines()) if retries.exists() else 0
-    ) == expected
+    assert (result.returncode == 0) == (damage == "none"), result.stderr
+    arguments = (tmp_path / "calls").read_text().splitlines()
+    assert arguments.count("--retry") == 1
+    assert arguments[arguments.index("--retry") + 1] == "3"
+    assert "--retry-all-errors" in arguments
+    assert arguments[arguments.index("--retry-delay") + 1] == "2"
+    assert arguments[arguments.index("--retry-max-time") + 1] == "120"
+    assert arguments[-3:] == [
+        "https://files.pythonhosted.org/packages/source/c/conda_skills/"
+        "conda_skills-0.2.1.tar.gz",
+        "-o",
+        str(tmp_path / "release-source.tar.gz"),
+    ]
+    if damage == "archive":
+        assert "FAILED" in result.stdout
+    assert "for " not in step["run"]
+    assert "while " not in step["run"]
 
 
 @pytest.mark.parametrize("damage", ["none", "truncated", "checksum"])
@@ -320,11 +269,42 @@ def test_release_metadata_matches(release_tree: Path, monkeypatch, capsys) -> No
     assert "Nothing was published." in capsys.readouterr().out
 
 
-def test_release_recipe_version_must_match(release_tree: Path, monkeypatch) -> None:
-    (release_tree.parents[1] / "recipe/recipe.yaml").write_text(
-        'context:\n  version: "0.2.0"\n', encoding="utf-8"
+def test_conda_build_uses_resolved_metadata(release_tree: Path, monkeypatch) -> None:
+    calls = []
+
+    def build(command, *, cwd, env, check):
+        calls.append(command)
+        assert cwd == release_tree.parents[1]
+        assert env["CONDA_SKILLS_VERSION"] == "0.1.0"
+        assert check is True
+
+    monkeypatch.setenv("CONDA_SKILLS_VERSION", "9.9.9")
+    monkeypatch.setattr(subprocess, "run", build)
+    monkeypatch.setattr(sys, "argv", [str(release_tree), "--build-conda"])
+    runpy.run_path(str(release_tree), run_name="__main__")
+    assert calls == [
+        [
+            "rattler-build",
+            "build",
+            "--recipe",
+            "recipe/recipe.yaml",
+            "--output-dir",
+            "conda-dist",
+            "-c",
+            "conda-forge",
+        ]
+    ]
+
+
+def test_recipe_requires_version_without_default() -> None:
+    recipe = yaml.loads(
+        (Path(__file__).parents[1] / "recipe/recipe.yaml").read_text(encoding="utf-8")
     )
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
+    assert recipe["context"]["version"] == '${{ env.get("CONDA_SKILLS_VERSION") }}'
+
+
+def test_release_check_requires_version(release_tree: Path, monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", [str(release_tree)])
     with pytest.raises(SystemExit) as error:
         runpy.run_path(str(release_tree), run_name="__main__")
     assert error.value.code == 2

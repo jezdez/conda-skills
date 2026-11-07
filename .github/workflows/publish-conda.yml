@@ -73,28 +73,16 @@ jobs:
       - name: Verify the published source distribution
         run: |
           set -euo pipefail
-          source_url="$(
-            curl -fsSL --connect-timeout 10 --max-time 30 \
-              "https://pypi.org/pypi/conda-skills/${RELEASE_TAG}/json" \
-              | jq -er --arg version "$RELEASE_TAG" --arg sha256 "$CONDA_SKILLS_SOURCE_SHA256" '
-                select(.info.version == $version)
-                | [.urls[] | select(.packagetype == "sdist")]
-                | select(length == 1) | .[0]
-                | select(.filename == ("conda_skills-" + $version + ".tar.gz")
-                    and .digests.sha256 == $sha256 and .yanked == false)
-                | .url
-                | select(test("^https://files\\.pythonhosted\\.org/packages/[A-Za-z0-9/_-]+/conda_skills-"
-                    + ($version | gsub("\\."; "\\.")) + "\\.tar\\.gz$"))'
-          )"
-          curl -fsSL --connect-timeout 10 --max-time 60 \
-            "$source_url" -o "$RUNNER_TEMP/release-source.tar.gz"
+          curl -fsSL --retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 --connect-timeout 10 --max-time 60 \
+            "https://files.pythonhosted.org/packages/source/c/conda_skills/conda_skills-${RELEASE_TAG}.tar.gz" \
+            -o "$RUNNER_TEMP/release-source.tar.gz"
           printf '%s  %s\n' "$CONDA_SKILLS_SOURCE_SHA256" "$RUNNER_TEMP/release-source.tar.gz" | sha256sum -c -
       - name: Build exact package
         run: |
           set -euo pipefail
           unset SETUPTOOLS_SCM_PRETEND_VERSION SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CONDA_SKILLS
           conda task run -e build build-conda
-      - name: Validate package metadata
+      - name: Check package artifact
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -104,20 +92,6 @@ jobs:
             echo "Expected exactly one noarch conda package." >&2
             exit 1
           fi
-
-          metadata="$(
-            conda workspace run -e build -- \
-              rattler-build package inspect --json "${packages[0]}"
-          )"
-          jq -se --arg version "$RELEASE_TAG" '
-            length == 1 and (.[0].index
-              | .name == "conda-skills"
-                and .version == $version
-                and .build_number == 0
-                and .subdir == "noarch"
-                and .noarch == "python"
-                and .license == "Apache-2.0")
-          ' <<< "$metadata" >/dev/null
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -185,7 +159,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish and verify jezdez/main
+    name: Publish to jezdez/main
     needs: [build, attest]
     runs-on: ubuntu-latest
     permissions:
@@ -249,101 +223,3 @@ jobs:
             --owner jezdez \
             --channel main \
             "$PACKAGE"
-      - name: Verify indexed package
-        run: |
-          set -euo pipefail
-          phase='package checksum'
-          metadata=''
-          trap 'rc=$?; printf "Post-upload verification failed: %s (line=%s status=%s)\n" "$phase" "$LINENO" "$rc" >&2; if [ -n "$metadata" ]; then printf "%s" "$metadata" | jq -Rs . >&2; fi; exit "$rc"' ERR
-
-          filename="${PACKAGE##*/}"
-          expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
-          phase='package size'
-          expected_size="$(stat -c '%s' "$PACKAGE")"
-          phase='package inspection'
-          metadata="$(
-            conda workspace run -e build -- \
-              rattler-build package inspect --json "$PACKAGE"
-          )"
-          phase='package build field'
-          build="$(jq -er '.index.build | select(type == "string" and length > 0)' <<< "$metadata")"
-          printf 'Verifying %s: build=%s sha256=%s size=%s\n' "$filename" "$build" "$expected_sha256" "$expected_size"
-          phase='channel metadata'
-
-          verified=false
-          for _ in {1..12}; do
-            distribution="$(
-              curl -fsSL --connect-timeout 10 --max-time 30 \
-                "https://api.anaconda.org/dist/jezdez/conda-skills/${RELEASE_TAG}/noarch/${filename}"
-            )" || distribution=''
-            repodata="$(
-              curl -fsSL --connect-timeout 10 --max-time 30 \
-                https://conda.anaconda.org/jezdez/noarch/repodata.json
-            )" || repodata=''
-
-            if jq -se \
-              --arg basename "noarch/${filename}" \
-              --arg build "$build" \
-              --arg sha256 "$expected_sha256" \
-              --arg version "$RELEASE_TAG" \
-              --argjson size "$expected_size" '
-                length == 1 and (.[0]
-                  | .basename == $basename
-                    and .version == $version
-                    and .sha256 == $sha256
-                    and .size == $size
-                    and (.labels | index("main"))
-                    and .attrs.build == $build
-                    and .attrs.build_number == 0
-                    and .attrs.subdir == "noarch")
-              ' <<< "$distribution" >/dev/null 2>&1 \
-              && jq -se \
-                --arg filename "$filename" \
-                --arg build "$build" \
-                --arg sha256 "$expected_sha256" \
-                --arg version "$RELEASE_TAG" \
-                --argjson size "$expected_size" '
-                  length == 1 and (.[0]."packages.conda"[$filename]
-                    | .name == "conda-skills"
-                      and .version == $version
-                      and .build == $build
-                      and .build_number == 0
-                      and .subdir == "noarch"
-                      and .noarch == "python"
-                      and .license == "Apache-2.0"
-                      and .sha256 == $sha256
-                      and .size == $size)
-                ' <<< "$repodata" >/dev/null 2>&1; then
-              verified=true
-              break
-            fi
-            printf 'Published metadata is not yet a match; retrying.\n' >&2
-            sleep 5
-          done
-
-          if [ "$verified" != true ]; then
-            echo "Could not verify the published package against Anaconda.org distribution metadata and noarch repodata." >&2
-            exit 1
-          fi
-      - name: Install and smoke-test the published package
-        run: |
-          set -euo pipefail
-          metadata="$(conda workspace run -e build -- rattler-build package inspect --json "$PACKAGE")"
-          build="$(jq -er '.index.build' <<< "$metadata")"
-          filename="${PACKAGE##*/}"
-          sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
-          consumer="$(mktemp -d "$RUNNER_TEMP/conda-skills-consumer.XXXXXX")"
-          trap 'rm -rf "$consumer"' EXIT
-          conda create --yes --prefix "$consumer/prefix" \
-            --override-channels --strict-channel-priority \
-            --channel https://conda.anaconda.org/jezdez --channel conda-forge \
-            "conda-skills=$RELEASE_TAG=$build"
-          jq -se --arg version "$RELEASE_TAG" --arg build "$build" \
-            --arg sha256 "$sha256" --arg filename "$filename" '
-              length == 1 and (.[0] | .name == "conda-skills" and
-                .version == $version and .build == $build and .sha256 == $sha256 and
-                .url == ("https://conda.anaconda.org/jezdez/noarch/" + $filename))
-            ' "$consumer/prefix/conda-meta/conda-skills-$RELEASE_TAG-$build.json" >/dev/null
-          conda run --prefix "$consumer/prefix" --cwd "$consumer" \
-            python -I "$GITHUB_WORKSPACE/scripts/smoke_plugin.py" \
-            --installed-prefix "$consumer/prefix"

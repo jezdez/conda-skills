@@ -1,12 +1,13 @@
-"""Check a proposed bare release tag against package and recipe versions."""
+"""Resolve package metadata for release checks and conda builds."""
 
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 from datetime import date
 from pathlib import Path
 
-from conda.common.serialize import yaml
 from hatchling.metadata.core import ProjectMetadata
 from hatchling.plugin.manager import PluginManager
 
@@ -14,16 +15,38 @@ from hatchling.plugin.manager import PluginManager
 def main() -> None:
     """Reject mismatched versions or missing release notes without publishing."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("version", help="Bare version, for example 0.1.0 (without v).")
+    parser.add_argument("version", nargs="?", help="Bare release version (without v).")
+    parser.add_argument(
+        "--build-conda",
+        action="store_true",
+        help="Build the conda recipe with the version resolved by Hatch.",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     version = ProjectMetadata(str(root), PluginManager()).version
-    recipe = yaml.loads((root / "recipe/recipe.yaml").read_text(encoding="utf-8"))
-    if args.version != version or args.version != recipe["context"]["version"]:
+    if args.version is None and not args.build_conda:
+        parser.error("Provide a release version or use --build-conda.")
+    if args.version is not None and args.version != version:
         parser.error(
-            f"Tag, resolved package version ({version}), and recipe version "
-            "must match exactly."
+            f"Tag and resolved package version ({version}) must match exactly."
         )
+    if args.build_conda:
+        subprocess.run(
+            [
+                "rattler-build",
+                "build",
+                "--recipe",
+                "recipe/recipe.yaml",
+                "--output-dir",
+                "conda-dist",
+                "-c",
+                "conda-forge",
+            ],
+            cwd=root,
+            env={**os.environ, "CONDA_SKILLS_VERSION": version},
+            check=True,
+        )
+        return
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     heading = next(
         (

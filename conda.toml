@@ -25,7 +25,7 @@ install-hooks = "prek install"
 docs = { cmd = "sphinx-build -W --keep-going -n -b dirhtml docs docs/_build/dirhtml", default-environment = "docs" }
 check-dist = { cmd = "python -m twine check --strict dist/conda_skills-*.whl dist/conda_skills-*.tar.gz", default-environment = "build" }
 test-wheel = { cmd = "python scripts/test_wheel.py", default-environment = "build" }
-build-conda = { cmd = "rattler-build build --recipe recipe/recipe.yaml --output-dir conda-dist -c conda-forge", default-environment = "build" }
+build-conda = { cmd = "python scripts/check_release.py --build-conda", default-environment = "build" }
 check-release = { cmd = ["python", "scripts/check_release.py", "{{ version }}"], args = [{ arg = "version" }], default-environment = "build" }
 check-workflows = { cmd = "actionlint", default-environment = "build" }
 build-example = { cmd = "rattler-build build --recipe docs/examples/recipe/recipe.yaml --output-dir conda-dist -c conda-forge", default-environment = "build" }
