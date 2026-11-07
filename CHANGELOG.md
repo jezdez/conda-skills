@@ -1,11 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-11-07
 
+- Add `inspect` for packaged skill metadata, file trees, and safe text previews, and `open` for opening the skill directory in the system file manager.
+- Highlight inspected source in terminals while preserving Markdown syntax and link destinations. Piped output is plain, and JSON retains the original decoded text.
+- Bound skill header and preview reads to 1 MiB, reject special files, and recheck containment before reading.
+- Add an inspection demo with a packaged reference file and a beginner overview of skills for conda users.
 - Use an explicit temporary source prefix for skill-forge recordings, avoiding collisions with existing named environments.
 - Preserve symlink traversal when locating an unlink target's source environment, and report malformed package records as unverifiable sources with explicit recovery guidance.
 - Use the active conda environment in the first-use tutorial, with explicit source selection covered as an advanced option.
-- BREAKING: Make `conda skill unlink` destination-based and remove its `-n`/`-p` options. Verify the existing symlink's target against conda package records, return `removed: false` for an absent destination without source lookup, and allow reviewed broken or unverifiable symlinks to be removed with `--force` while preserving file, directory, and redirected-parent protections.
+- BREAKING: Unlinking no longer takes `-n`/`-p`. It checks the destination link against the target environment's package records, independently of the active environment. An absent link returns `removed: false`. Use `--force` only after inspecting broken or unverifiable links. Files, directories, and redirected parents remain protected.
 - Make quickstart's default scope follow `--global`, show the current-directory destination, and explain source-selection and unlink requirements in command guidance.
 - BREAKING: Rename `conda skill install` to `conda skill link` and `conda skill remove` to `conda skill unlink`, with no aliases for the old subcommands. The native `conda skills` alias remains available. Package installation and removal commands are unchanged.
 - Fix secret forwarding to the reusable Anaconda publisher.

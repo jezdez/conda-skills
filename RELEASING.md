@@ -31,10 +31,10 @@ conda task run -e build check-dist
 conda task run -e build test-wheel
 conda task run -e build build-conda
 conda task run -e build test-example
-conda task run -e build check-release 0.1.0
+conda task run -e build check-release 0.2.0
 ```
 
-`check-release VERSION` compares the bare version argument with Hatchling's resolved package version and the recipe candidate. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.1.0` for the current candidate, not `v0.1.0`.
+`check-release VERSION` compares the bare version argument with Hatchling's resolved package version and the recipe candidate. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.2.0` for the current candidate, not `v0.2.0`.
 
 Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, expect a development-version mismatch. The task does not create a tag, upload artifacts, or publish a release.
 
