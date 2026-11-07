@@ -22,7 +22,7 @@ def recovery() -> dict:
 
 
 def test_recovery_preserves_original_artifacts_and_publication_boundaries(recovery):
-    """Only the protected uploader and final draft job may mutate remote state."""
+    """Grant draft-read access while keeping upload and finalization dependent on checks."""
     assert recovery["on"] == {"workflow_dispatch": None}
     jobs = recovery["jobs"]
     assert set(jobs) == {"verify", "publish", "finalize"}
@@ -30,7 +30,7 @@ def test_recovery_preserves_original_artifacts_and_publication_boundaries(recove
     assert jobs["verify"]["permissions"] == {
         "actions": "read",
         "attestations": "read",
-        "contents": "read",
+        "contents": "write",
     }
     assert jobs["publish"]["needs"] == "verify"
     assert jobs["publish"]["environment"]["name"] == "anaconda"

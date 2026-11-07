@@ -30,7 +30,7 @@ jobs:
     permissions:
       actions: read
       attestations: read
-      contents: read
+      contents: write # GitHub requires push access even to read draft releases.
     outputs:
       package-sha256: ${{ steps.evidence.outputs.package_sha256 }}
       release-id: ${{ steps.identity.outputs.release_id }}
@@ -168,7 +168,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: read
-      contents: read
+      contents: write # Recheck the draft before uploading the original artifact.
     environment:
       name: anaconda
       url: https://anaconda.org/jezdez/conda-skills
