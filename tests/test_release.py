@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import io
+import json
 import os
 import runpy
 import shutil
@@ -29,6 +30,64 @@ def test_conda_publisher_receives_required_environment_secret() -> None:
         is True
     )
     assert publisher["jobs"]["publish"]["environment"]["name"] == "anaconda"
+
+
+@pytest.mark.parametrize(
+    "metadata,inspect_status,message",
+    [
+        ('{"index":{"build":"py_0"}}', 0, ""),
+        ('{"index":{"build":"py_0"}}', 7, "package inspection"),
+        ('{"index":{}}', 0, "package build field"),
+        ('{"index":{"build":""}}', 0, "package build field"),
+        ('{"index":{"build":42}}', 0, "package build field"),
+        ("not JSON", 0, "package build field"),
+    ],
+)
+def test_post_upload_inspection_diagnostics(
+    tmp_path: Path, metadata: str, inspect_status: int, message: str
+) -> None:
+    """Exercise the real pre-poll checks without uploading or querying a channel."""
+    bash = shutil.which("bash")
+    if not bash or not shutil.which("jq") or not shutil.which("sha256sum"):
+        pytest.skip("Release shell tools are unavailable")
+    workflow = yaml.loads(
+        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    step = next(
+        step
+        for step in workflow["jobs"]["publish"]["steps"]
+        if step.get("name") == "Verify indexed package"
+    )
+    package = tmp_path / "package.conda"
+    package.write_bytes(b"package")
+    script = tmp_path / "inspect.sh"
+    script.write_text(
+        'conda() { printf "%s\\n" "$INSPECTION"; return "$INSPECT_STATUS"; }\n'
+        'stat() { printf "7\\n"; }\n' + step["run"].split("for _ in {1..12}; do")[0],
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [bash, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        env={
+            **os.environ,
+            "PACKAGE": str(package),
+            "INSPECTION": metadata,
+            "INSPECT_STATUS": str(inspect_status),
+            "ANACONDA_API_KEY": "do-not-log",
+        },
+    )
+    assert (result.returncode == 0) == (message == ""), result.stderr
+    if message:
+        assert message in result.stderr
+        assert "status=" in result.stderr
+        if not inspect_status:
+            assert json.dumps(metadata) in result.stderr
+    assert "do-not-log" not in result.stdout + result.stderr
 
 
 @pytest.mark.parametrize("damage", ["none", "truncated", "checksum"])

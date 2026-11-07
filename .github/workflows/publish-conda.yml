@@ -226,15 +226,23 @@ jobs:
       - name: Verify indexed package
         run: |
           set -euo pipefail
+          phase='package checksum'
+          metadata=''
+          trap 'rc=$?; printf "Post-upload verification failed: %s (line=%s status=%s)\n" "$phase" "$LINENO" "$rc" >&2; if [ -n "$metadata" ]; then printf "%s" "$metadata" | jq -Rs . >&2; fi; exit "$rc"' ERR
 
           filename="${PACKAGE##*/}"
           expected_sha256="$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)"
+          phase='package size'
           expected_size="$(stat -c '%s' "$PACKAGE")"
+          phase='package inspection'
           metadata="$(
             conda workspace run -e build -- \
               rattler-build package inspect --json "$PACKAGE"
           )"
-          build="$(jq -r '.index.build' <<< "$metadata")"
+          phase='package build field'
+          build="$(jq -er '.index.build | select(type == "string" and length > 0)' <<< "$metadata")"
+          printf 'Verifying %s: build=%s sha256=%s size=%s\n' "$filename" "$build" "$expected_sha256" "$expected_size"
+          phase='channel metadata'
 
           for _ in {1..12}; do
             distribution="$(
@@ -281,6 +289,7 @@ jobs:
                 ' <<< "$repodata" >/dev/null 2>&1; then
               exit 0
             fi
+            printf 'Published metadata is not yet a match; retrying.\n' >&2
             sleep 5
           done
 

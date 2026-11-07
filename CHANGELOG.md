@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix secret forwarding to the reusable Anaconda publisher.
+- Report the failing stage and exit status during post-upload verification, with escaped package metadata when available.
+- Retire the one-off 0.1.0 recovery and diagnostic workflows after verified publication.
+
 ## 0.1.0 - 2026-11-07
 
 Initial release.

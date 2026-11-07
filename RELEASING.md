@@ -102,17 +102,17 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
 
-### Recover the 0.1.0 conda publication
+### 0.1.0 publication incident
 
 The first release published to PyPI, but the conda upload stopped before sending the package because the reusable workflow did not receive its environment secret. Future releases explicitly pass `ANACONDA_API_KEY` and declare it required. Re-running the original tagged workflow cannot pick up that correction.
 
-`recover-release.yml` is a manual, version-specific recovery for `0.1.0` from run `42319158589`. It downloads the original artifacts, checks their fixed digests, verifies the conda attestations against the original commit and tag, and compares the Python distributions with PyPI and the existing draft. It does not build or publish Python packages. The protected `anaconda` job uploads only the original conda package, verifies the channel and a fresh installation, and finalizes the existing GitHub draft after success.
+The one-off recovery used the artifacts from the [original release run](https://github.com/jezdez/conda-skills/actions/runs/42319158589). It verified their fixed digests and signatures against the original commit and tag, then compared the Python distributions with PyPI and the existing draft. No packages were rebuilt and nothing was republished to PyPI.
 
-The workflow runs from `main`, so an administrator must temporarily permit that branch in the `anaconda` environment while retaining reviewer approval. Remove that branch exception after recovery. Do not adapt this workflow to another version by relaxing its digest or identity checks, and do not rerun it after a successful conda upload: it deliberately refuses existing channel releases.
+Recovery completed on November 7, 2026. [Run 42322660191](https://github.com/jezdez/conda-skills/actions/runs/42322660191) uploaded the original package but failed in its post-upload verification step before the polling loop. Separate checks verified the publication signature and build provenance, the downloaded package bytes, Anaconda.org distribution metadata, channel repodata, and a fresh channel installation with the plugin smoke test. All matched the original artifact digest `9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d`. The unchanged draft was then finalized as an immutable release and the temporary `main` deployment exception was removed.
 
-Recovery completed on November 7, 2026. Run `42322660191` uploaded the original package but failed in its post-upload verification step before the polling loop. Separate checks verified the publication signature and build provenance, the downloaded package bytes, Anaconda.org distribution metadata, channel repodata, and a fresh channel installation with the plugin smoke test. All matched the original artifact digest `9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d`. The unchanged draft was then finalized as an immutable release and the temporary `main` deployment exception was removed.
+The original inspections and the exact read-only verification step later passed on Linux in [diagnostic run 42324229619](https://github.com/jezdez/conda-skills/actions/runs/42324229619). The historical failure remains unexplained. Post-upload verification now reports its failing stage, line, exit status, and escaped inspection output without dumping the environment or upload credential. These diagnostics improve future evidence collection, not proof that the original fault is fixed.
 
-The recovery run remains failed in GitHub Actions. Its post-upload failure has not been reproduced locally or diagnosed conclusively. Investigate that step before the next release rather than assuming a successful publication means the automation is fixed. Do not rerun the 0.1.0 recovery now that both indexes contain the release.
+The recovery and diagnostic workflows have been removed from `main`. Their definitions remain in Git history and the linked runs. Do not rerun recovery or upload again: both indexes already contain the immutable 0.1.0 artifacts.
 
 Pushing a tag is a publication action and requires explicit authorization. Workflow files alone do not configure the external publishers, and passing local preparation checks does not authorize uploads or release announcements.
 
