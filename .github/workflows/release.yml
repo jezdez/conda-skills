@@ -16,8 +16,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tests:
+    name: Test release
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/tests.yml
+
   build:
     name: Validate and build distributions
+    needs: tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,9 +53,6 @@ jobs:
           auto-activate: true
       - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
       - run: conda workspace install --locked -e build
-      - run: conda workspace install --locked -e docs
-      - run: conda workspace install --locked -e py311
-      - run: conda workspace install --locked -e py314
       - name: Validate release version and metadata
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -55,9 +60,6 @@ jobs:
           set -euo pipefail
           version="$(conda workspace run -e build -- python -m hatchling version)"
           test "$version" = "$RELEASE_TAG"
-      - run: conda task run -e py311 check
-      - run: conda task run -e py314 check
-      - run: conda task run -e docs docs
       - run: conda task run -e build build
       - run: conda task run -e build check-dist
       - run: conda task run -e build test-wheel

@@ -226,7 +226,9 @@ conda task run -e build build
   changelog notes are a manual pre-tag checklist item. Do not override the version.
   Follow `RELEASING.md`. Version checks do not authorize tagging or publishing.
 - Pull requests run native tests and artifact/docs checks. Stable annotated tags
-  on main trigger coordinated PyPI and jezdez/main publication. Release conda
+  on main trigger the same reusable test workflow. Release builds and publication
+  must depend on all its jobs succeeding, with no independent tag test race.
+  Release conda
   packages come from the digest-verified published source archive, not a rebuild
   of the checkout. Sign and verify the exact artifacts before upload, preserve
   channel overwrite checks, and publish the GitHub draft after successful uploads.

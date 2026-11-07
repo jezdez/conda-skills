@@ -61,6 +61,27 @@ def test_conda_publisher_receives_required_environment_secret() -> None:
     assert publisher["jobs"]["publish"]["environment"]["name"] == "anaconda"
 
 
+def test_release_waits_for_full_reusable_tests() -> None:
+    """Make the entire native test workflow a required release dependency."""
+    workflows = Path(__file__).parents[1] / ".github/workflows"
+    release = yaml.loads((workflows / "release.yml").read_text())
+    tests = yaml.loads((workflows / "tests.yml").read_text())
+    assert "workflow_call" in tests["on"]
+    assert tests["on"]["push"] == {"branches": ["**"]}
+    assert release["jobs"]["tests"]["uses"] == "./.github/workflows/tests.yml"
+    assert "secrets" not in release["jobs"]["tests"]
+    assert release["jobs"]["build"]["needs"] == "tests"
+    assert "if" not in release["jobs"]["build"]
+    assert set(tests["jobs"]) == {
+        "workflow-security",
+        "tests",
+        "artifacts",
+        "windows-example",
+    }
+    build_commands = [step.get("run", "") for step in release["jobs"]["build"]["steps"]]
+    assert not any("-e py311" in cmd or "-e py314" in cmd for cmd in build_commands)
+
+
 def test_conda_release_builds_attests_then_publishes() -> None:
     """Keep signing and protected, non-overwriting uploads before finalization."""
     workflows = Path(__file__).parents[1] / ".github/workflows"
