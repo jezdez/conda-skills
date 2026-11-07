@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import stat
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Self
@@ -33,6 +35,44 @@ class Skill:
     def __post_init__(self) -> None:
         """Reject invalid metadata when constructing an installed skill."""
         _validate_metadata(self.name, self.description)
+
+    def files(self) -> list[tuple[str, str]]:
+        """List relative paths and entry types in tree order without following links."""
+        root = self.path.resolve(strict=True)
+        if not root.is_relative_to(self.path.parents[2].resolve(strict=True)):
+            raise ValueError(f"Skill escapes environment: {self.path}")
+        result: list[tuple[str, str]] = []
+        pending = sorted(root.iterdir(), reverse=True)
+        while pending:
+            path = pending.pop()
+            mode = path.lstat().st_mode
+            if stat.S_ISLNK(mode):
+                kind = "symlink"
+            elif stat.S_ISDIR(mode):
+                kind = "directory"
+                if not path.resolve(strict=True).is_relative_to(root):
+                    raise ValueError(f"Directory escapes skill: {path}")
+                pending.extend(sorted(path.iterdir(), reverse=True))
+            elif stat.S_ISREG(mode):
+                kind = "file"
+            else:
+                kind = "special"
+            result.append((path.relative_to(root).as_posix(), kind))
+        return result
+
+    def read_file(self, relative: str) -> str | None:
+        """Read at most 1 MiB of confined UTF-8 text, returning None for binary data.
+
+        Require forward-slash-separated relative paths. Refuse special files and
+        recheck containment and the opened file before reading any bytes.
+        """
+        if (
+            "\\" in relative
+            or ":" in relative
+            or any(part in {"", ".", ".."} for part in relative.split("/"))
+        ):
+            raise ValueError(f"Expected a skill-relative file path: {relative!r}")
+        return _read_file(self.path, relative, prefix=self.path.parents[2])
 
     @staticmethod
     def create_skeleton(name: str, description: str, root: Path) -> Path:
@@ -99,7 +139,10 @@ class Skill:
         """
         _validate_directory(path, prefix)
         header = path / "SKILL.md"
-        lines = header.read_text(encoding="utf-8").split("\n")
+        text = _read_file(path, "SKILL.md", prefix=prefix)
+        if text is None:
+            raise ValueError(f"Skill header must be UTF-8 text: {header}")
+        lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         if lines[0] != "---":
             raise ValueError(f"Missing YAML frontmatter: {header}")
         try:
@@ -115,6 +158,47 @@ class Skill:
         return cls(
             path.name, metadata.get("description"), path, record.name, record.version
         )
+
+
+def _read_file(root: Path, relative: str, *, prefix: Path) -> str | None:
+    """Read a confined regular file up to 1 MiB, returning None for binary data."""
+    try:
+        root = root.resolve(strict=True)
+        if not root.is_relative_to(prefix.resolve(strict=True)):
+            raise ValueError(f"Skill escapes environment: {root}")
+        path = (root / relative).resolve(strict=True)
+    except RuntimeError as exc:
+        raise ValueError(f"Cannot resolve skill file {relative}: {exc}") from exc
+    if not path.is_relative_to(root):
+        raise ValueError(f"File escapes skill: {relative}")
+    if not stat.S_ISREG(path.stat().st_mode):
+        raise ValueError(f"Not a regular file: {relative}")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"Not a regular file: {relative}")
+        resolved = (root / relative).resolve(strict=True)
+        if not resolved.is_relative_to(root):
+            raise ValueError(f"File escapes skill: {relative}")
+        if not os.path.samestat(opened, resolved.stat()):
+            raise ValueError(f"File changed while opening: {relative}")
+        with os.fdopen(descriptor, "rb", closefd=False) as stream:
+            content = stream.read(1024 * 1024 + 1)
+    except RuntimeError as exc:
+        raise ValueError(f"Cannot resolve skill file {relative}: {exc}") from exc
+    finally:
+        os.close(descriptor)
+    if len(content) > 1024 * 1024:
+        raise ValueError(f"File exceeds the 1 MiB inspection limit: {relative}")
+    if b"\x00" in content:
+        return None
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 def _validate_name(name: str) -> None:

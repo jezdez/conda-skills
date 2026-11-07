@@ -8,8 +8,10 @@ from conda.exceptions import CondaError
 
 from ..skills import discover
 from .init import execute as init
+from .inspect import execute as inspect
 from .link import execute as link
 from .list import execute as list_skills
+from .open import execute as open_skill
 from .output import escape_terminal_controls
 from .quickstart import execute as quickstart
 from .status import execute as status
@@ -52,7 +54,12 @@ def execute(args: Namespace) -> int:
                     raise ValueError(
                         f"No package-owned skill {args.skill_name!r} in {prefix}"
                     )
-                link(selected, root, args.backend)
+                if args.skill_command == "inspect":
+                    inspect(selected, args.file)
+                elif args.skill_command == "open":
+                    open_skill(selected)
+                else:
+                    link(selected, root, args.backend)
         return 0
     except (ValueError, OSError) as exc:
         message = str(exc) if context.json else escape_terminal_controls(exc)

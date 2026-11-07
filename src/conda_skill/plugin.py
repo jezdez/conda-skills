@@ -15,8 +15,10 @@ def configure_parser(parser: ArgumentParser) -> None:
     """Add skill subcommands and options without loading their implementations."""
     from .cli.parser import (
         configure_init,
+        configure_inspect,
         configure_link,
         configure_list,
+        configure_open,
         configure_quickstart,
         configure_status,
         configure_unlink,
@@ -24,6 +26,8 @@ def configure_parser(parser: ArgumentParser) -> None:
 
     subparsers = parser.add_subparsers(dest="skill_command", required=True)
     configure_list(subparsers)
+    configure_inspect(subparsers)
+    configure_open(subparsers)
     configure_status(subparsers)
     configure_link(subparsers)
     configure_unlink(subparsers)

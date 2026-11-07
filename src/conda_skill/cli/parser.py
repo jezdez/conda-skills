@@ -16,6 +16,27 @@ def configure_list(subparsers: _SubParsersAction[ArgumentParser]) -> None:
     add_parser_prefix(parser)
 
 
+def configure_inspect(subparsers: _SubParsersAction[ArgumentParser]) -> None:
+    """Configure package metadata, file listing, and safe text previews."""
+    summary = "Inspect a packaged skill and its supporting files."
+    parser = subparsers.add_parser("inspect", help=summary, description=summary)
+    add_parser_json(parser)
+    add_parser_prefix(parser)
+    parser.add_argument("skill_name", help="Packaged skill directory name.")
+    parser.add_argument(
+        "--file", help="Preview a UTF-8 file relative to the skill directory."
+    )
+
+
+def configure_open(subparsers: _SubParsersAction[ArgumentParser]) -> None:
+    """Configure opening the validated source directory in a file manager."""
+    summary = "Open a skill directory in the file manager."
+    parser = subparsers.add_parser("open", help=summary, description=summary)
+    add_parser_json(parser)
+    add_parser_prefix(parser)
+    parser.add_argument("skill_name", help="Packaged skill directory name.")
+
+
 def configure_status(subparsers: _SubParsersAction[ArgumentParser]) -> None:
     """Configure destination status without a source environment selector."""
     summary = "Show destination entries."
@@ -38,7 +59,8 @@ def configure_link(subparsers: _SubParsersAction[ArgumentParser]) -> None:
     parser = subparsers.add_parser("link", help=summary, description=summary)
     add_parser_json(parser)
     add_parser_prefix(parser)
-    _add_destination_options(parser)
+    parser.add_argument("--backend", choices=("agents", "claude"), default="agents")
+    _add_global_option(parser)
     parser.add_argument("skill_name", help="Packaged skill directory name.")
 
 
@@ -56,7 +78,8 @@ def configure_unlink(subparsers: _SubParsersAction[ArgumentParser]) -> None:
         ),
     )
     add_parser_json(parser)
-    _add_destination_options(parser)
+    parser.add_argument("--backend", choices=("agents", "claude"), default="agents")
+    _add_global_option(parser)
     parser.add_argument("skill_name", help="Destination skill directory name.")
     parser.add_argument(
         "--force",
@@ -66,12 +89,6 @@ def configure_unlink(subparsers: _SubParsersAction[ArgumentParser]) -> None:
             "directories, or bypass redirected parent path checks."
         ),
     )
-
-
-def _add_destination_options(parser: ArgumentParser) -> None:
-    """Add the shared client backend and explicit home-directory scope."""
-    parser.add_argument("--backend", choices=("agents", "claude"), default="agents")
-    _add_global_option(parser)
 
 
 def _add_global_option(parser: ArgumentParser) -> None:

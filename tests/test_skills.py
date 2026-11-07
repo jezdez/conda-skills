@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -8,6 +9,21 @@ import pytest
 from conda.core.prefix_data import PrefixData
 
 from conda_skill.skills import Skill, discover
+
+
+@pytest.mark.parametrize("operation", ["files", "read_file"])
+def test_skill_rejects_root_replaced_after_discovery(
+    prefix: Path, tmp_path: Path, operation: str
+) -> None:
+    [skill] = discover(prefix)
+    outside = tmp_path / "outside"
+    skill.path.rename(outside)
+    skill.path.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="escapes environment"):
+        if operation == "files":
+            skill.files()
+        else:
+            skill.read_file("references/example.md")
 
 
 def test_package_owned_discovery(prefix: Path) -> None:
@@ -181,3 +197,212 @@ def test_discovery_rejects_symlink_cycles(
         )
     with pytest.raises(ValueError, match="Cannot resolve skill"):
         discover(prefix)
+
+
+def test_skill_files_are_sorted_without_following_symlinks(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    (skill.path / "assets").mkdir()
+    (skill.path / "assets/data.bin").write_bytes(b"\x00")
+    (skill.path / "scripts").mkdir()
+    (skill.path / "scripts/run.py").write_text("raise SystemExit(42)\n")
+    (skill.path / "loop").symlink_to("loop")
+    (skill.path / "reference-link").symlink_to("references", target_is_directory=True)
+    assert skill.files() == [
+        ("SKILL.md", "file"),
+        ("assets", "directory"),
+        ("assets/data.bin", "file"),
+        ("loop", "symlink"),
+        ("reference-link", "symlink"),
+        ("references", "directory"),
+        ("references/example.md", "file"),
+        ("scripts", "directory"),
+        ("scripts/run.py", "file"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "content,expected",
+    [
+        (b"", ""),
+        (
+            b"line\r\n[bold]literal[/bold]\t\x1b[31m\n",
+            "line\r\n[bold]literal[/bold]\t\x1b[31m\n",
+        ),
+        (b"\x00data", None),
+        (b"\xffdata", None),
+        (b"x" * 1024 * 1024, "x" * 1024 * 1024),
+    ],
+    ids=["empty", "literal-text", "nul", "invalid-utf8", "limit"],
+)
+def test_skill_reads_text_or_reports_binary(
+    prefix: Path, content: bytes, expected: str | None
+) -> None:
+    [skill] = discover(prefix)
+    (skill.path / "references/example.md").write_bytes(content)
+    assert skill.read_file("references/example.md") == expected
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "",
+        ".",
+        "..",
+        "../SKILL.md",
+        "references/../SKILL.md",
+        "/SKILL.md",
+        "C:/SKILL.md",
+        "C:SKILL.md",
+        "//server/share/file",
+        r"references\example.md",
+        r"\\server\share\file",
+        "SKILL.md:stream",
+        "references/./example.md",
+        "references//example.md",
+        "references/",
+    ],
+)
+def test_skill_read_rejects_nonportable_or_traversing_paths(
+    prefix: Path, relative: str
+) -> None:
+    [skill] = discover(prefix)
+    with pytest.raises(ValueError, match="skill-relative"):
+        skill.read_file(relative)
+
+
+@pytest.mark.parametrize("directory", [False, True])
+def test_skill_read_rechecks_symlinks_after_discovery(
+    prefix: Path, tmp_path: Path, directory: bool
+) -> None:
+    [skill] = discover(prefix)
+    external = tmp_path / "external"
+    external.mkdir()
+    (external / "example.md").write_text("private")
+    reference = skill.path / "references/example.md"
+    reference.unlink()
+    if directory:
+        reference.parent.rmdir()
+        reference.parent.symlink_to(external, target_is_directory=True)
+    else:
+        reference.symlink_to(external / "example.md")
+    with pytest.raises(ValueError, match="escapes skill"):
+        skill.read_file("references/example.md")
+
+
+def test_skill_read_allows_internal_symlink(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    (skill.path / "reference.md").symlink_to("references/example.md")
+    assert skill.read_file("reference.md") == (
+        skill.path / "references/example.md"
+    ).read_bytes().decode("utf-8")
+
+
+def test_skill_read_rejects_large_files(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    (skill.path / "large").write_bytes(b"x" * (1024 * 1024 + 1))
+    with pytest.raises(ValueError, match="1 MiB"):
+        skill.read_file("large")
+
+
+def test_skill_read_missing_file(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    with pytest.raises(FileNotFoundError):
+        skill.read_file("missing")
+
+
+def test_skill_read_rejects_directory(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    with pytest.raises(ValueError, match="regular file"):
+        skill.read_file("references")
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="FIFOs require POSIX")
+def test_skill_lists_fifo_but_refuses_to_open_it(prefix: Path, monkeypatch) -> None:
+    [skill] = discover(prefix)
+    os.mkfifo(skill.path / "pipe")
+
+    def refuse_open(*args, **kwargs):
+        pytest.fail("A special file must be rejected before opening")
+
+    monkeypatch.setattr(os, "open", refuse_open)
+    assert ("pipe", "special") in skill.files()
+    with pytest.raises(ValueError, match="regular file"):
+        skill.read_file("pipe")
+
+
+@pytest.mark.parametrize(
+    "content,message", [(b"x" * (1024 * 1024 + 1), "1 MiB"), (b"\xff", "text")]
+)
+def test_discovery_rejects_oversized_or_binary_header(
+    prefix: Path, content: bytes, message: str
+) -> None:
+    (prefix / "share/agent-skills/example/SKILL.md").write_bytes(content)
+    with pytest.raises(ValueError, match=message):
+        discover(prefix)
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="FIFOs require POSIX")
+def test_discovery_rejects_special_header_before_opening(
+    prefix: Path, monkeypatch
+) -> None:
+    header = prefix / "share/agent-skills/example/SKILL.md"
+    header.unlink()
+    os.mkfifo(header)
+    path_open = Path.open
+
+    def guarded_open(path, *args, **kwargs):
+        if path == header:
+            pytest.fail("Discovery must not open a FIFO header")
+        return path_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+    with pytest.raises(ValueError, match="regular file"):
+        discover(prefix)
+
+
+@pytest.mark.parametrize("replacement", ["file", "escape", "fifo"])
+@pytest.mark.skipif(os.name == "nt", reason="Windows refuses renaming open CRT handles")
+def test_skill_rechecks_opened_file_before_reading(
+    prefix: Path, tmp_path: Path, monkeypatch, replacement: str
+) -> None:
+    if replacement == "fifo" and not hasattr(os, "mkfifo"):
+        pytest.skip("FIFOs require POSIX")
+    [skill] = discover(prefix)
+    path = skill.path / "references/example.md"
+    external = tmp_path / "external.md"
+    external.write_text("private")
+    original_open = os.open
+    descriptors = []
+
+    def replace_on_open(filename, flags):
+        if replacement == "fifo":
+            path.unlink()
+            os.mkfifo(path)
+        descriptor = original_open(filename, flags)
+        descriptors.append(descriptor)
+        if replacement != "fifo":
+            path.rename(path.with_name("old.md"))
+            if replacement == "escape":
+                path.symlink_to(external)
+            else:
+                path.write_text("replacement")
+        return descriptor
+
+    monkeypatch.setattr(os, "open", replace_on_open)
+    message = {
+        "file": "changed while opening",
+        "escape": "escapes skill",
+        "fifo": "regular file",
+    }[replacement]
+    with pytest.raises(ValueError, match=message):
+        skill.read_file("references/example.md")
+    for descriptor in descriptors:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+
+
+def test_skill_read_cycle_is_validation_error(prefix: Path) -> None:
+    [skill] = discover(prefix)
+    (skill.path / "cycle").symlink_to("cycle")
+    with pytest.raises((ValueError, OSError)):
+        skill.read_file("cycle")

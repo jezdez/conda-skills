@@ -59,6 +59,28 @@ def main() -> None:
         listed = json.loads(run("skill", "list", "-p", "../source-env", "--json"))
         assert [skill["name"] for skill in listed] == ["review-notes"]
         assert listed[0]["package"] == "conda-skills-example"
+        inspected = json.loads(
+            run("skill", "inspect", "review-notes", "-p", "../source-env", "--json")
+        )
+        assert inspected["package"] == "conda-skills-example"
+        assert {"path": "SKILL.md", "type": "file"} in inspected["files"]
+        assert {"path": "references/checklist.md", "type": "file"} in inspected["files"]
+        preview = json.loads(
+            run(
+                "skill",
+                "inspect",
+                "review-notes",
+                "-p",
+                "../source-env",
+                "--file",
+                "SKILL.md",
+                "--json",
+            )
+        )
+        assert preview["kind"] == "text"
+        assert preview["content"] == (
+            root / "docs/examples/review-notes/SKILL.md"
+        ).read_bytes().decode("utf-8")
         assert "review-notes" in run("skill", "list", "-p", "../source-env")
         for _ in range(2):
             assert "Linked review-notes at" in run(
