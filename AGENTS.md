@@ -12,6 +12,10 @@
   `cli/link.py`, `cli/unlink.py`, `cli/init.py`, and `cli/quickstart.py` own
   command execution and output.
   `cli/output.py` shares terminal escaping and table rendering.
+- `cli/inspect.py` displays metadata and safe file previews. `cli/open.py` opens
+  only the validated skill directory in the system file manager, never a file.
+  File reads stay inside the skill root and must not block on special files or
+  dump binary/oversized content. Neither command executes skill instructions.
 - `skills.py` owns the frozen installed `Skill` model, shared metadata validation,
   directory loading, and discovery through conda package records.
   `Skill.create_skeleton()` generates authoring files and returns their path.
@@ -54,9 +58,16 @@
   and checks duplicate ownership.
 - Prefer frozen dataclasses for related data with its own validation or operations.
   Do not wrap stateless formatting or parser functions in classes.
-- Before adding a helper, check whether conda or an existing dependency already
-  provides it, then whether an existing model owns it. Keep short one-use glue
-  inline. Reusable module functions need a clear responsibility and docstring.
+- Before adding a helper, check existing code, test fixtures, conda APIs, and
+  dependencies, then whether an existing model owns the operation.
+- Keep related steps together when separating them obscures their order or shared
+  state. Extract when the name and inputs clarify the caller, reduce confusing
+  nesting, or make substantial logic easier to test. One caller can be enough.
+- Review callers and helpers together, including state changes and error handling.
+  Explain the specific readability or testing benefit of extraction or inlining.
+  Function length and complexity scores alone do not demonstrate improvement.
+- Avoid speculative reuse and trivial forwarding wrappers unless an API requires
+  them. An underscore marks an internal function, not a reason to inline it.
 - Keep argparse, Rich, printing, and exit-status decisions out of domain modules.
 - Do not add section-divider comments to organize large files. Use topic-specific
   modules and descriptive names.
@@ -78,7 +89,7 @@
   error handling. Do not introduce a separate environment resolver or config
   system. Missing-environment lookup must not create directories.
 - Environment selection uses `-n`/`--name` or `-p`/`--prefix` on `list`,
-  `link`, and quickstart's installed-skill branch. The default is conda's active
+  `link`, `inspect`, `open`, and quickstart's installed-skill branch. The default is conda's active
   target environment. `unlink` takes no source-environment flags. Destination
   scope is independent: current directory by default, home with `--global`.
 - Home-directory mutations require explicit `--global`. Preserve the existing

@@ -14,6 +14,14 @@ from conda.plugins.manager import CondaPluginManager
 from conda_skill.plugin import conda_subcommands, configure_parser, run
 
 
+@pytest.fixture
+def parser() -> argparse.ArgumentParser:
+    """Configure a fresh parser for argument and help behavior tests."""
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    return parser
+
+
 def test_registers_skill_subcommand() -> None:
     [command] = conda_subcommands()
     assert command.name == "skill"
@@ -37,18 +45,14 @@ def test_registers_skill_subcommand() -> None:
         (("list", "-n", "x", "-p", "y"), 2),
     ],
 )
-def test_standard_argument_behavior(args: tuple[str, ...], code: int) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
+def test_standard_argument_behavior(parser, args: tuple[str, ...], code: int) -> None:
     with pytest.raises(SystemExit) as error:
         parser.parse_args(args)
     assert error.value.code == code
 
 
 @pytest.mark.parametrize("command", ["install", "remove"])
-def test_rejects_old_command_spellings(command: str, capsys) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
+def test_rejects_old_command_spellings(parser, command: str, capsys) -> None:
     with pytest.raises(SystemExit) as error:
         parser.parse_args([command, "example"])
     assert error.value.code == 2
@@ -59,6 +63,8 @@ def test_rejects_old_command_spellings(command: str, capsys) -> None:
     "command,terms",
     [
         ("list", ("package-owned", "source environment")),
+        ("inspect", ("inspect", "supporting files")),
+        ("open", ("directory", "file manager")),
         ("status", ("destination", "entries")),
         ("link", ("link", "packaged skill")),
         ("unlink", ("destination", "link")),
@@ -68,10 +74,8 @@ def test_rejects_old_command_spellings(command: str, capsys) -> None:
 )
 @pytest.mark.parametrize("overview", [True, False])
 def test_help_explains_command_meaning(
-    command: str, terms: tuple[str, ...], overview: bool, capsys
+    parser, command: str, terms: tuple[str, ...], overview: bool, capsys
 ) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
     with pytest.raises(SystemExit) as error:
         parser.parse_args(["--help"] if overview else [command, "--help"])
     assert error.value.code == 0
@@ -89,9 +93,7 @@ def test_help_explains_command_meaning(
 
 
 @pytest.mark.parametrize("command", ["status", "link", "unlink", "init", "quickstart"])
-def test_destination_help_names_current_directory(command: str, capsys) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
+def test_destination_help_names_current_directory(parser, command: str, capsys) -> None:
     with pytest.raises(SystemExit):
         parser.parse_args([command, "--help"])
     output = " ".join(capsys.readouterr().out.split())
@@ -99,9 +101,7 @@ def test_destination_help_names_current_directory(command: str, capsys) -> None:
     assert "current project" not in output
 
 
-def test_unlink_help_explains_force_limits(capsys) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
+def test_unlink_help_explains_force_limits(parser, capsys) -> None:
     with pytest.raises(SystemExit):
         parser.parse_args(["unlink", "--help"])
     output = " ".join(capsys.readouterr().out.split())
@@ -113,9 +113,7 @@ def test_unlink_help_explains_force_limits(capsys) -> None:
 
 
 @pytest.mark.parametrize("selector", ["-n", "--name", "-p", "--prefix"])
-def test_unlink_rejects_source_selectors(selector: str, capsys) -> None:
-    parser = argparse.ArgumentParser(prog="conda skill")
-    configure_parser(parser)
+def test_unlink_rejects_source_selectors(parser, selector: str, capsys) -> None:
     with pytest.raises(SystemExit) as error:
         parser.parse_args(["unlink", "example", selector, "source"])
     assert error.value.code == 2

@@ -70,8 +70,7 @@ def test_human_status_output(prefix: Path, render_cli) -> None:
         assert text in state
 
 
-def test_empty_status_output(prefix: Path, render_cli) -> None:
-    (prefix / "conda-meta/agent-skill-example-1.0-0.json").unlink()
+def test_empty_status_output(render_cli) -> None:
     result = render_cli("status")
     assert "No skill entries found." in result
     assert json.loads(render_cli("status", "--json")) == []

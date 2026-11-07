@@ -82,3 +82,5 @@ Python distributions go to `dist/`, and conda artifacts go to `conda-dist/`. Che
 Explain what changed and why, and report the checks you ran. Use one line per paragraph or bullet in pull request and issue bodies. Note untested platforms and any external prerequisites needed to reproduce a problem. A lockfile covering Linux, macOS ARM64, and Windows does not show that tests ran natively on all three.
 
 Review AI-assisted contributions with the same care as other changes. You remain responsible for their behavior, claims, licensing, and tests. Keep release notes in `CHANGELOG.md` and do not announce an unreleased change as already published.
+
+For helper functions, follow the reasoning in [conda/conda#16929](https://github.com/conda/conda/pull/16929): look for an existing implementation first, keep related steps together when separating them obscures the operation, and extract when it makes the caller or substantial logic easier to understand or test. One caller can be enough. Review the caller and helper together and explain the specific benefit of any proposed extraction or inlining. Shorter functions and lower complexity scores alone do not prove improvement.
