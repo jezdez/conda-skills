@@ -15,6 +15,43 @@ import pytest
 from conda.common.serialize import yaml
 
 
+def test_release_source_url_uses_normalized_distribution_name() -> None:
+    """Use PyPI's underscore-normalized directory for the published source archive."""
+    recipe = yaml.loads(
+        (Path(__file__).parents[1] / "recipe/recipe.yaml").read_text(encoding="utf-8")
+    )
+    assert recipe["source"][0]["then"]["url"] == (
+        "https://files.pythonhosted.org/packages/source/c/conda_skills/"
+        "conda_skills-${{ version }}.tar.gz"
+    )
+
+
+def test_manual_conda_resume_keeps_original_release_and_source() -> None:
+    """Limit recovery to the verified partial release without changing its source."""
+    workflow = yaml.loads(
+        (Path(__file__).parents[1] / ".github/workflows/publish-conda.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert "workflow_dispatch" in workflow["on"]
+    build = workflow["jobs"]["build"]
+    assert build["steps"][0]["with"]["ref"] == "refs/tags/${{ inputs.version }}"
+    validation = next(step for step in build["steps"] if step.get("id") == "release")
+    assert 'test "$GITHUB_REF" = refs/heads/main' in validation["run"]
+    assert 'test "$RELEASE_TAG" = 0.2.0' in validation["run"]
+    assert "45c27c2b9c0d943b4c59696ce097837891860460" in validation["run"]
+    assert (
+        "0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02"
+        in validation["run"]
+    )
+    steps = build["steps"]
+    names = [step.get("name", "") for step in steps]
+    assert names.index("Validate release metadata") < names.index(
+        "Use the repaired recipe for manual resume"
+    )
+    assert workflow["jobs"]["publish"]["environment"]["name"] == "anaconda"
+
+
 def test_conda_publisher_receives_required_environment_secret() -> None:
     """Pass the environment secret explicitly to the reusable publisher."""
     workflows = Path(__file__).parents[1] / ".github/workflows"

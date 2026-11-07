@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Correct the normalized PyPI source URL used for conda release builds.
+
 ## 0.2.0 - 2026-11-07
 
 - Add `inspect` for packaged skill metadata, file trees, and safe text previews, and `open` for opening the skill directory in the system file manager.

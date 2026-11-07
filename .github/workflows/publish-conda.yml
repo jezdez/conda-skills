@@ -1,6 +1,16 @@
 name: Publish conda package
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version to resume (currently only 0.2.0)
+        required: true
+        type: string
+      source-sha256:
+        description: SHA-256 of the source distribution published to PyPI
+        required: true
+        type: string
   workflow_call:
     secrets:
       ANACONDA_API_KEY:
@@ -24,6 +34,7 @@ defaults:
 
 env:
   RELEASE_TAG: ${{ inputs.version }}
+  CONDA_SKILLS_SOURCE_SHA256: ${{ inputs.source-sha256 }}
 
 concurrency:
   group: publish-conda-${{ inputs.version }}
@@ -35,12 +46,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      release-sha: ${{ steps.release.outputs.release-sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: refs/tags/${{ inputs.version }}
           fetch-depth: 0
           persist-credentials: false
       - name: Validate release tag
+        id: release
         run: |
           set -euo pipefail
 
@@ -48,11 +63,23 @@ jobs:
             echo "Release tag must be a canonical bare version." >&2
             exit 1
           fi
-          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          [[ "$CONDA_SKILLS_SOURCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
           test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = tag
-          test "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          release_sha="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          test "$(git rev-parse HEAD)" = "$release_sha"
+          git merge-base --is-ancestor "$release_sha" origin/main
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            test "$GITHUB_REF" = refs/heads/main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+            # Resume only the existing partial release, without moving its tag.
+            test "$RELEASE_TAG" = 0.2.0
+            test "$release_sha" = 45c27c2b9c0d943b4c59696ce097837891860460
+            test "$CONDA_SKILLS_SOURCE_SHA256" = 0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02
+          else
+            test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+            test "$release_sha" = "$GITHUB_SHA"
+          fi
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
           miniforge-version: latest
@@ -62,12 +89,43 @@ jobs:
       - run: conda workspace install --locked -e build
       - name: Validate release metadata
         run: conda task run -e build check-release "$RELEASE_TAG"
-      - name: Build exact package
-        env:
-          CONDA_SKILLS_SOURCE_SHA256: ${{ inputs.source-sha256 }}
+      - name: Use the repaired recipe for manual resume
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
-          [[ "$CONDA_SKILLS_SOURCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          # Check VCS-derived metadata before this intentional recipe-only change.
+          git show "$GITHUB_SHA:recipe/recipe.yaml" > recipe/recipe.yaml
+          conda workspace run -e build -- python -c '
+          import os
+          from pathlib import Path
+          from conda.common.serialize import yaml
+
+          recipe = yaml.loads(Path("recipe/recipe.yaml").read_text(encoding="utf-8"))
+          if recipe["context"]["version"] != os.environ["RELEASE_TAG"]:
+              raise SystemExit("The repaired recipe version must match the release tag.")
+          '
+      - name: Verify the published source distribution
+        run: |
+          set -euo pipefail
+          source_url="$(
+            curl -fsSL --connect-timeout 10 --max-time 30 \
+              "https://pypi.org/pypi/conda-skills/${RELEASE_TAG}/json" \
+              | jq -er --arg version "$RELEASE_TAG" --arg sha256 "$CONDA_SKILLS_SOURCE_SHA256" '
+                select(.info.version == $version)
+                | [.urls[] | select(.packagetype == "sdist")]
+                | select(length == 1) | .[0]
+                | select(.filename == ("conda_skills-" + $version + ".tar.gz")
+                    and .digests.sha256 == $sha256 and .yanked == false)
+                | .url
+                | select(test("^https://files\\.pythonhosted\\.org/packages/[A-Za-z0-9/_-]+/conda_skills-"
+                    + ($version | gsub("\\."; "\\.")) + "\\.tar\\.gz$"))'
+          )"
+          curl -fsSL --connect-timeout 10 --max-time 60 \
+            "$source_url" -o "$RUNNER_TEMP/release-source.tar.gz"
+          printf '%s  %s\n' "$CONDA_SKILLS_SOURCE_SHA256" "$RUNNER_TEMP/release-source.tar.gz" | sha256sum -c -
+      - name: Build exact package
+        run: |
+          set -euo pipefail
           unset SETUPTOOLS_SCM_PRETEND_VERSION SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CONDA_SKILLS
           conda task run -e build build-conda
       - name: Validate package metadata
@@ -135,12 +193,12 @@ jobs:
           shopt -s nullglob
           packages=(conda-dist/noarch/*.conda)
           test "${#packages[@]}" -eq 1
-          # Bind the publication statement to this reusable workflow and release source.
+          # Bind signing to the invocation commit, which is main for manual resume.
           gh attestation verify "${packages[0]}" \
             --repo "$GITHUB_REPOSITORY" --bundle "$BUNDLE" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/publish-conda.yml" \
             --signer-digest "$GITHUB_SHA" \
-            --source-digest "$GITHUB_SHA" --source-ref "refs/tags/$RELEASE_TAG" \
+            --source-digest "$GITHUB_SHA" --source-ref "$GITHUB_REF" \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
             --deny-self-hosted-runners \
             --predicate-type https://schemas.conda.org/attestations-publish-1.schema.json \
@@ -162,7 +220,7 @@ jobs:
 
   publish:
     name: Publish and verify jezdez/main
-    needs: attest
+    needs: [build, attest]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -172,6 +230,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.build.outputs.release-sha }}
           persist-credentials: false
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
@@ -187,13 +246,14 @@ jobs:
       - name: Verify unchanged tag and absent channel release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.build.outputs.release-sha }}
         run: |
           set -euo pipefail
           tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
             --jq 'select(.object.type == "tag") | .object.sha')"
           test -n "$tag_sha"
           gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" \
-            | jq -e --arg sha "$GITHUB_SHA" '.object.type == "commit" and .object.sha == $sha' >/dev/null
+            | jq -e --arg sha "$RELEASE_SHA" '.object.type == "commit" and .object.sha == $sha' >/dev/null
           shopt -s nullglob
           packages=(conda-dist/noarch/*.conda)
           test "${#packages[@]}" -eq 1

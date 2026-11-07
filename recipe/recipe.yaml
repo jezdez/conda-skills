@@ -11,7 +11,7 @@ package:
 source:
   - if: source_sha256 != ""
     then:
-      url: https://pypi.org/packages/source/c/conda-skills/conda_skills-${{ version }}.tar.gz
+      url: https://files.pythonhosted.org/packages/source/c/conda_skills/conda_skills-${{ version }}.tar.gz
       sha256: ${{ source_sha256 }}
     else:
       path: ..

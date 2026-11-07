@@ -102,6 +102,14 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
 
+### Resume the 0.2.0 conda build
+
+The 0.2.0 release published its Python distributions before the conda build failed on a source URL using the hyphenated project directory. The corrected URL uses PyPI's normalized `conda_skills` directory. The published source digest is `0c4e35dd09176d419b4933802df648f1d24bfa4098d5f8f279c59b3b8a483d02`.
+
+The manual entry point in `publish-conda.yml` resumes only this release from `main`. It retains the original annotated tag and published source archive. It does not upload Python distributions or move the tag. The conda artifact is built once from the verified source, then signed and passed through the usual protected upload and channel checks. Because the signing workflow runs from `main`, its certificate records the recovery workflow's commit and branch rather than claiming to be the original tagged workflow run.
+
+Manual recovery requires a temporary `main` deployment policy in the `anaconda` environment, with reviewer approval still enabled. Remove the temporary policy after completion. Finalize the existing draft only after verifying both indexes and their original artifact digests. Do not rerun a completed upload or overwrite an existing channel package.
+
 ### 0.1.0 publication incident
 
 The first release published to PyPI, but the conda upload stopped before sending the package because the reusable workflow did not receive its environment secret. Future releases explicitly pass `ANACONDA_API_KEY` and declare it required. Re-running the original tagged workflow cannot pick up that correction.
