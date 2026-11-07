@@ -37,7 +37,7 @@ conda workspace run -e build -- python -m hatchling version
 Review these release details manually:
 
 - Once a release is authorized and its date selected, add a changelog heading in the form `## VERSION - YYYY-MM-DD` before tagging. Dated notes record the candidate without claiming publication. Workflows do not check the changelog.
-- On the clean release-tag checkout, confirm that the Hatch command prints the bare release version, such as `0.2.1`, not `v0.2.1`. Before tagging, expect a development version. Tagging requires separate authorization.
+- On the clean release-tag checkout, confirm that the Hatch command prints the bare release version, such as `0.2.2`, not `v0.2.2`. Before tagging, expect a development version. Tagging requires separate authorization.
 
 The workflows resolve the version with the same Hatch CLI command and compare it with the release tag using a shell test. The local commands above do not create a tag, upload artifacts, or publish a release.
 
@@ -106,6 +106,10 @@ Publication across services is not atomic. A PyPI success followed by a conda fa
 - If only GitHub finalization failed, confirm both package publications and their evidence, then finalize the existing draft without rebuilding or re-uploading packages.
 
 Never move a released tag or replace a published artifact. Recovery actions that publish or change a release require explicit authorization.
+
+### 0.2.1 cancellation
+
+The later 0.2.1 attempt was cancelled before either package upload to correct test ordering. Its tag and draft artifacts remain unchanged. Version 0.2.2 uses the reusable test workflow described above.
 
 ### 0.2.0 publication recovery
 

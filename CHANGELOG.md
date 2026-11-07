@@ -2,12 +2,18 @@
 
 ## Unreleased
 
-## 0.2.1 - 2026-11-07
+## 0.2.2 - 2026-11-07
 
+- Require the full reusable test workflow to succeed before release builds, signing, or publication. Tag pushes no longer start an independent test run that races with publication.
+- Make release-download path assertions portable across Windows and POSIX systems.
 - Resolve conda recipe versions directly with the Hatch CLI without a separately maintained default. Replace the release-check script with workflow version comparisons and a manual dated-notes checklist.
 - Simplify conda publication to build and test, attest, then upload. Remove post-upload polling, repeated inspections, and fresh channel installations while retaining verified signatures, protected uploads, tag identity checks, and overwrite protection.
 - Correct the normalized PyPI source URL used for conda release builds.
 - Retry transient source-download failures with bounded curl retries and verify the archive against the recorded SHA-256 without querying PyPI metadata.
+
+## 0.2.1 - Cancelled
+
+The tagged release was cancelled before publication to PyPI or Anaconda.org because release builds could start before the tag's full test matrix finished. The public tag and attested draft artifacts are retained unchanged. Version 0.2.2 includes the intended changes with corrected test ordering.
 
 ## 0.2.0 - 2026-11-07
 
