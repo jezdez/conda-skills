@@ -14,6 +14,14 @@ defaults:
 jobs:
   inspect:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: 0.1.0
+      ORIGINAL_SHA: 216fe73bf25807e2c62c8dbe0e8d295dd96f0a04
+      ORIGINAL_TAG: bfb62080cf623133f7cf217671132794222126e8
+      PACKAGE_SHA256: 9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d
+      GH_REPO: jezdez/conda-skills
+      WHEEL_SHA256: b4869512931a490c65cdcba20564719ac27f2b4e81b5c195a0226b7b179d8c9a
+      SDIST_SHA256: 5a4fa69d2fc3064463047df311bfeb1e2723fff6c7f4012e4ae599d9e0002589
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,3 +66,20 @@ jobs:
           printf 'inspection=%s\n' "$metadata"
           build="$(jq -er '.index.build' <<< "$metadata")"
           printf 'filename=%s sha256=%s size=%s build=%s\n' "$filename" "$expected_sha256" "$expected_size" "$build"
+      - name: Execute the original verification step without publication
+        run: |
+          set -euo pipefail
+          # The checkout is the original release commit. Fetch only the historical
+          # workflow text so we can execute its read-only verification, not recovery.
+          git fetch --no-tags origin 8e6f411aca6fd8e70da96a39d8450e9852e12233
+          git show FETCH_HEAD:.github/workflows/recover-release.yml > "$RUNNER_TEMP/recovery.yml"
+          conda workspace run -e build -- python - "$RUNNER_TEMP/recovery.yml" "$RUNNER_TEMP/verify.sh" <<'PY'
+          import sys
+          from pathlib import Path
+          from conda.common.serialize import yaml
+
+          workflow = yaml.loads(Path(sys.argv[1]).read_text())
+          step = next(step for step in workflow["jobs"]["publish"]["steps"] if step.get("name") == "Verify indexed package")
+          Path(sys.argv[2]).write_text("set -x\ntrap 'rc=$?; printf \"failed line=%s status=%s\\n\" \"$LINENO\" \"$rc\" >&2' ERR\n" + step["run"])
+          PY
+          bash -el "$RUNNER_TEMP/verify.sh"
