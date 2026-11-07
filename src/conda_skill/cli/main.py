@@ -8,12 +8,12 @@ from conda.exceptions import CondaError
 
 from ..skills import discover
 from .init import execute as init
-from .install import execute as install
+from .link import execute as link
 from .list import execute as list_skills
 from .output import escape_terminal_controls
 from .quickstart import execute as quickstart
-from .remove import execute as remove
 from .status import execute as status
+from .unlink import execute as unlink
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -24,7 +24,7 @@ def execute(args: Namespace) -> int:
     try:
         root = Path.home() if getattr(args, "global_scope", False) else Path.cwd()
         if (
-            args.skill_command in ("install", "remove", "init")
+            args.skill_command in ("link", "unlink", "init")
             and not args.global_scope
             and root.resolve() == Path.home().resolve()
         ):
@@ -34,11 +34,11 @@ def execute(args: Namespace) -> int:
         if args.skill_command == "init":
             init(args.skill_name, args.description, root)
         elif args.skill_command == "quickstart":
-            quickstart(
-                lambda: discover(source_prefix(args)), global_scope=args.global_scope
-            )
+            quickstart(lambda: source_prefix(args), global_scope=args.global_scope)
         elif args.skill_command == "status":
             status(root, args.backend, all_backends=args.all_backends)
+        elif args.skill_command == "unlink":
+            unlink(args.skill_name, root, args.backend, force=args.force)
         else:
             prefix = source_prefix(args)
             skills = discover(prefix)
@@ -52,10 +52,7 @@ def execute(args: Namespace) -> int:
                     raise ValueError(
                         f"No package-owned skill {args.skill_name!r} in {prefix}"
                     )
-                if args.skill_command == "install":
-                    install(selected, root, args.backend)
-                else:
-                    remove(selected, root, args.backend)
+                link(selected, root, args.backend)
         return 0
     except (ValueError, OSError) as exc:
         message = str(exc) if context.json else escape_terminal_controls(exc)

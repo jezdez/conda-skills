@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Use an explicit temporary source prefix for skill-forge recordings, avoiding collisions with existing named environments.
+- Preserve symlink traversal when locating an unlink target's source environment, and report malformed package records as unverifiable sources with explicit recovery guidance.
+- Use the active conda environment in the first-use tutorial, with explicit source selection covered as an advanced option.
+- BREAKING: Make `conda skill unlink` destination-based and remove its `-n`/`-p` options. Verify the existing symlink's target against conda package records, return `removed: false` for an absent destination without source lookup, and allow reviewed broken or unverifiable symlinks to be removed with `--force` while preserving file, directory, and redirected-parent protections.
+- Make quickstart's default scope follow `--global`, show the current-directory destination, and explain source-selection and unlink requirements in command guidance.
+- BREAKING: Rename `conda skill install` to `conda skill link` and `conda skill remove` to `conda skill unlink`, with no aliases for the old subcommands. The native `conda skills` alias remains available. Package installation and removal commands are unchanged.
 - Fix secret forwarding to the reusable Anaconda publisher.
 - Report the failing stage and exit status during post-upload verification, with escaped package metadata when available.
 - Retire the one-off 0.1.0 recovery and diagnostic workflows after verified publication.

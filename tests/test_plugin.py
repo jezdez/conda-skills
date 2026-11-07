@@ -45,13 +45,23 @@ def test_standard_argument_behavior(args: tuple[str, ...], code: int) -> None:
     assert error.value.code == code
 
 
+@pytest.mark.parametrize("command", ["install", "remove"])
+def test_rejects_old_command_spellings(command: str, capsys) -> None:
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    with pytest.raises(SystemExit) as error:
+        parser.parse_args([command, "example"])
+    assert error.value.code == 2
+    assert f"invalid choice: '{command}'" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize(
     "command,terms",
     [
         ("list", ("package-owned", "source environment")),
         ("status", ("destination", "entries")),
-        ("install", ("link", "packaged skill")),
-        ("remove", ("matching", "link")),
+        ("link", ("link", "packaged skill")),
+        ("unlink", ("destination", "link")),
         ("init", ("create", "skeleton")),
         ("quickstart", ("interactive", "guide")),
     ],
@@ -78,6 +88,40 @@ def test_help_explains_command_meaning(
         assert term in text
 
 
+@pytest.mark.parametrize("command", ["status", "link", "unlink", "init", "quickstart"])
+def test_destination_help_names_current_directory(command: str, capsys) -> None:
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    with pytest.raises(SystemExit):
+        parser.parse_args([command, "--help"])
+    output = " ".join(capsys.readouterr().out.split())
+    assert "current directory" in output
+    assert "current project" not in output
+
+
+def test_unlink_help_explains_force_limits(capsys) -> None:
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    with pytest.raises(SystemExit):
+        parser.parse_args(["unlink", "--help"])
+    output = " ".join(capsys.readouterr().out.split())
+    assert "--force" in output
+    assert "unverified symlink" in output
+    assert "directories" in output
+    assert "files" in output
+    assert "redirected" in output
+
+
+@pytest.mark.parametrize("selector", ["-n", "--name", "-p", "--prefix"])
+def test_unlink_rejects_source_selectors(selector: str, capsys) -> None:
+    parser = argparse.ArgumentParser(prog="conda skill")
+    configure_parser(parser)
+    with pytest.raises(SystemExit) as error:
+        parser.parse_args(["unlink", "example", selector, "source"])
+    assert error.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+
+
 def test_installed_discovery() -> None:
     entry_points = [
         entry
@@ -95,6 +139,10 @@ def test_installed_discovery() -> None:
     parser = argparse.ArgumentParser(prog="conda skill")
     command.configure_parser(parser)
     assert parser.parse_args(["status"]).skill_command == "status"
+    for name in ("link", "unlink"):
+        args = parser.parse_args([name, "example"])
+        assert args.skill_command == name
+        assert args.skill_name == "example"
 
 
 def test_lazy_registration(tmp_path: Path) -> None:
@@ -109,7 +157,7 @@ def test_lazy_registration(tmp_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    # Pytest collection imports implementations; check startup in a fresh process.
+    # Pytest collection imports implementations, so check startup in a fresh process.
     test_installed_discovery()
     for module in sys.modules:
         assert module not in {

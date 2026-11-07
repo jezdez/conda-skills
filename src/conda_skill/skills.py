@@ -38,7 +38,7 @@ class Skill:
     def create_skeleton(name: str, description: str, root: Path) -> Path:
         """Create authoring files and return their path, without installing a skill.
 
-        Validate and serialize before writing; refuse any existing destination.
+        Validate and serialize before writing. Refuse any existing destination.
         Package only SKILL.md and leave the license for the author to choose.
         """
         _validate_metadata(name, description)
@@ -92,9 +92,9 @@ class Skill:
 
     @classmethod
     def from_directory(cls, path: Path, record: PrefixRecord, *, prefix: Path) -> Self:
-        """Load one skill's header and validate its name and filesystem boundaries.
+        """Load one skill's header and validate its metadata and filesystem containment.
 
-        The caller establishes package ownership; prefix bounds the skill root,
+        The caller establishes package ownership. Prefix contains the skill root,
         while companion files must remain inside that root.
         """
         _validate_directory(path, prefix)
@@ -117,8 +117,8 @@ class Skill:
         )
 
 
-def _validate_metadata(name: str, description: str) -> None:
-    """Apply the same name and description rules to installed and authored skills."""
+def _validate_name(name: str) -> None:
+    """Reject unsafe or nonportable skill directory names."""
     if (
         not isinstance(name, str)
         or not SKILL_NAME_PATTERN.fullmatch(name)
@@ -126,6 +126,11 @@ def _validate_metadata(name: str, description: str) -> None:
         or name in WINDOWS_DEVICE_NAMES
     ):
         raise ValueError(f"Invalid skill directory name: {name!r}")
+
+
+def _validate_metadata(name: str, description: str) -> None:
+    """Apply the same name and description rules to installed and authored skills."""
+    _validate_name(name)
     if not isinstance(description, str) or not description.strip():
         raise ValueError("Skill needs a text description")
     if len(description) > 1024:

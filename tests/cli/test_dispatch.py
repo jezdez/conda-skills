@@ -7,26 +7,40 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize("command", ["skill", "skills"])
+@pytest.mark.parametrize("old_command", ["install", "remove"])
+def test_installed_cli_rejects_old_command_spellings(
+    prefix: Path, run_cli, command: str, old_command: str
+) -> None:
+    result = run_cli(old_command, "example", "-p", str(prefix), command=command)
+    assert result.returncode == 2
+    assert f"invalid choice: '{old_command}'" in result.stderr
+
+
 def test_plural_alias_uses_same_commands(prefix: Path, run_cli) -> None:
     result = run_cli("list", "-p", str(prefix), "--json", command="skills")
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)[0]["name"] == "example"
 
 
-def test_installed_cli_roundtrip(prefix: Path, run_cli) -> None:
-    listed = run_cli("list", "-p", str(prefix), "--json")
+@pytest.mark.parametrize("command", ["skill", "skills"])
+def test_installed_cli_roundtrip(prefix: Path, run_cli, command: str) -> None:
+    active = {"CONDA_PREFIX": str(prefix), "CONDA_DEFAULT_ENV": str(prefix)}
+    listed = run_cli("list", "--json", command=command, env=active)
     assert listed.returncode == 0, listed.stderr
     assert json.loads(listed.stdout)[0]["name"] == "example"
-    installed = run_cli("install", "example", "-p", str(prefix), "--json")
-    assert installed.returncode == 0, installed.stderr
-    target = Path(json.loads(installed.stdout)["path"])
+    linked = run_cli("link", "example", "--json", command=command, env=active)
+    assert linked.returncode == 0, linked.stderr
+    payload = json.loads(linked.stdout)
+    target = Path(payload["path"])
+    assert payload == {"name": "example", "path": str(target)}
     assert target.is_symlink()
-    state = run_cli("status", "--json")
+    state = run_cli("status", "--json", command=command)
     assert state.returncode == 0, state.stderr
     assert json.loads(state.stdout)[0]["state"] == "linked"
-    removed = run_cli("remove", "example", "-p", str(prefix), "--json")
+    removed = run_cli("unlink", "example", "--json", command=command)
     assert removed.returncode == 0, removed.stderr
-    assert json.loads(removed.stdout)["removed"] is True
+    assert json.loads(removed.stdout) == {"name": "example", "removed": True}
     assert not target.is_symlink()
     assert (prefix / "share/agent-skills/example/SKILL.md").is_file()
 
@@ -48,8 +62,8 @@ def test_cli_roundtrip(
     listed = render_cli("list", "-p", str(prefix), *json_args)
     assert json.loads(listed)[0]["name"] == "example"
     for _ in range(2):
-        installed = render_cli(
-            "install",
+        linked = render_cli(
+            "link",
             "example",
             "-p",
             str(prefix),
@@ -57,14 +71,12 @@ def test_cli_roundtrip(
             backend,
             *json_args,
         )
-        assert Path(json.loads(installed)["path"]).is_symlink()
+        assert Path(json.loads(linked)["path"]).is_symlink()
     state = render_cli("status", "--backend", backend, *json_args)
     assert json.loads(state)[0]["state"] == "linked"
     removed = render_cli(
-        "remove",
+        "unlink",
         "example",
-        "-p",
-        str(prefix),
         "--backend",
         backend,
         *json_args,

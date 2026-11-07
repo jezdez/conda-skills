@@ -39,7 +39,7 @@ def main() -> None:
         date.fromisoformat(heading.removeprefix(f"## {args.version} - "))
     except ValueError:
         parser.error("The release heading must use a valid YYYY-MM-DD date.")
-    print(f"Release metadata agrees on {args.version}; nothing was published.")
+    print(f"Release metadata agrees on {args.version}. Nothing was published.")
 
 
 if __name__ == "__main__":

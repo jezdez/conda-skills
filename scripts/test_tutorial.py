@@ -62,7 +62,7 @@ def main() -> None:
         assert "review-notes" in run("skill", "list", "-p", "../source-env")
         for _ in range(2):
             assert "Linked review-notes at" in run(
-                "skill", "install", "review-notes", "-p", "../source-env"
+                "skill", "link", "review-notes", "-p", "../source-env"
             )
         link = project / ".agents/skills/review-notes"
         assert link.is_symlink()
@@ -77,7 +77,7 @@ def main() -> None:
             == (source / "share/agent-skills/review-notes").resolve()
         )
         assert "Removed link for review-notes." in run(
-            "skill", "remove", "review-notes", "-p", "../source-env"
+            "skill", "unlink", "review-notes"
         )
         assert json.loads(run("skill", "status", "--json")) == []
         assert (source / "share/agent-skills/review-notes/SKILL.md").is_file()
@@ -120,14 +120,16 @@ def main() -> None:
             str(source),
             str(generated_package),
         )
-        [generated] = json.loads(run("skill", "list", "-p", str(source), "--json"))
+        environment["CONDA_PREFIX"] = str(source)
+        [generated] = json.loads(run("skill", "list", "--json"))
         assert generated["name"] == "generated-notes"
         assert generated["description"] == "Example guidance"
-        run("skill", "install", "generated-notes", "-p", str(source), "--json")
+        run("skill", "link", "generated-notes", "--json")
         assert (project / ".agents/skills/generated-notes").is_symlink()
-        run("skill", "remove", "generated-notes", "-p", str(source), "--json")
+        environment["CONDA_PREFIX"] = str(directory / "unrelated-missing-environment")
+        run("skill", "unlink", "generated-notes", "--json")
         run("remove", "--yes", "--prefix", str(source), "--all")
-    print("Tutorial and generated skeleton build/install/link/remove workflows passed.")
+    print("Tutorial and generated skeleton build/install/link/unlink workflows passed.")
 
 
 if __name__ == "__main__":

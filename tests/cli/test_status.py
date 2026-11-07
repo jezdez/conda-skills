@@ -8,8 +8,8 @@ import pytest
 
 
 def test_status_all_labels_existing_destinations(prefix: Path, render_cli) -> None:
-    render_cli("install", "example", "-p", str(prefix))
-    render_cli("install", "example", "-p", str(prefix), "--backend", "claude")
+    render_cli("link", "example", "-p", str(prefix))
+    render_cli("link", "example", "-p", str(prefix), "--backend", "claude")
     entries = json.loads(render_cli("status", "--all", "--json"))
     assert [entry["backend"] for entry in entries] == ["agents", "claude"]
     assert all(
@@ -64,7 +64,7 @@ def test_status_all_global_is_source_independent(tmp_path: Path, run_cli) -> Non
 
 
 def test_human_status_output(prefix: Path, render_cli) -> None:
-    render_cli("install", "example", "-p", str(prefix))
+    render_cli("link", "example", "-p", str(prefix))
     state = render_cli("status")
     for text in ("Name", "State", "Path", "Target", "linked", "example"):
         assert text in state
@@ -88,9 +88,9 @@ def test_destination_names_are_literal(tmp_path: Path, render_cli) -> None:
 
 
 def test_status_survives_deleted_source(prefix: Path, tmp_path: Path, run_cli) -> None:
-    installed = run_cli("install", "example", "-p", str(prefix), "--json")
-    assert installed.returncode == 0, installed.stderr
-    target = json.loads(installed.stdout)["path"]
+    linked = run_cli("link", "example", "-p", str(prefix), "--json")
+    assert linked.returncode == 0, linked.stderr
+    target = json.loads(linked.stdout)["path"]
     source = str(prefix / "share/agent-skills/example")
     shutil.rmtree(prefix)
     result = run_cli(

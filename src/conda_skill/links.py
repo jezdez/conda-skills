@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import os
+import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from conda.exceptions import CondaError
+
+from .skills import _validate_name, discover
 
 if TYPE_CHECKING:
     from .skills import Skill
@@ -24,10 +29,10 @@ def destination(root: Path, backend: str) -> Path:
     return path
 
 
-def install(skill: Skill, root: Path, backend: str) -> Path:
+def link(skill: Skill, root: Path, backend: str) -> Path:
     """Create a skill symlink in the agent's directory and return its path.
 
-    Reuse an existing link to the same source; reject all other conflicts.
+    Reuse an existing link to the same source and reject all other conflicts.
     Use a relative target unless the source is on a different Windows drive.
     """
     directory = destination(root, backend)
@@ -49,20 +54,60 @@ def install(skill: Skill, root: Path, backend: str) -> Path:
     return target
 
 
-def remove(skill: Skill, root: Path, backend: str) -> bool:
-    """Remove a matching symlink without changing the source skill.
+def unlink(name: str, root: Path, backend: str, *, force: bool = False) -> bool:
+    """Remove a destination symlink without changing its source or package.
 
-    Return False if absent, True if removed, and raise ValueError for conflicts.
+    Verify package ownership in the prefix inferred from the recorded target path.
+    Force skips source verification only. Return False if absent, True if removed,
+    and raise ValueError for unsafe destinations or unverifiable sources.
     """
-    target = destination(root, backend) / skill.name
-    if not target.exists() and not target.is_symlink():
+    _validate_name(name)
+    target = destination(root, backend) / name
+    try:
+        original = target.lstat()
+    except FileNotFoundError:
         return False
+    if not stat.S_ISLNK(original.st_mode):
+        raise ValueError(
+            f"Refusing to remove a destination that is not a symlink: {target}"
+        )
+    raw_target = target.readlink()
+    if not force:
+        try:
+            source = target.resolve(strict=True)
+            recorded = target.parent / raw_target
+            if recorded.parts[-3:] != ("share", "agent-skills", name):
+                raise ValueError(
+                    "Target does not match the packaged skill layout and name"
+                )
+            skills = discover(recorded.parents[2])
+            if not any(
+                skill.name == name and skill.path.resolve(strict=True) == source
+                for skill in skills
+            ):
+                raise ValueError("No package records own the target skill header")
+        except (
+            ValueError,
+            OSError,
+            RuntimeError,
+            CondaError,
+            KeyError,
+            TypeError,
+        ) as exc:
+            raise ValueError(
+                f"Refusing to remove unverified symlink: {target}. {exc}. "
+                "Inspect it with conda skill status, then use --force to remove only "
+                "this symlink."
+            ) from exc
+    # Recheck known changes. Filesystem operations are not a transaction.
+    destination(root, backend)
+    current = target.lstat()
     if (
-        not target.is_symlink()
-        or not target.exists()
-        or target.resolve() != skill.path.resolve()
+        not stat.S_ISLNK(current.st_mode)
+        or not os.path.samestat(original, current)
+        or target.readlink() != raw_target
     ):
-        raise ValueError(f"Refusing to remove unrelated destination: {target}")
+        raise ValueError(f"Refusing to remove changed destination: {target}")
     target.unlink()
     return True
 
@@ -71,7 +116,7 @@ def status(root: Path, backend: str) -> list[dict[str, str]]:
     """List destination entries by name as linked, broken, or unmanaged.
 
     A linked entry points to a directory containing SKILL.md. These states
-    describe the filesystem only; they do not establish package or link ownership.
+    describe the filesystem only, without identifying package or link ownership.
     """
     directory = destination(root, backend)
     if not directory.exists():
@@ -90,7 +135,7 @@ def status(root: Path, backend: str) -> list[dict[str, str]]:
                 except FileNotFoundError:
                     target = str(path.resolve())
             except (OSError, RuntimeError):
-                # Python 3.11 raises RuntimeError for cycles; newer Python uses OSError.
+                # Python 3.11 raises RuntimeError for cycles, newer Python uses OSError.
                 state, target = "broken", str(path.readlink())
         else:
             state, target = "unmanaged", ""

@@ -71,7 +71,7 @@ def main() -> None:
                 check=True,
             )
             if arguments == ("--help",):
-                assert "install" in result.stdout and "remove" in result.stdout
+                assert "link" in result.stdout and "unlink" in result.stdout
             else:
                 assert json.loads(result.stdout) == []
     print("Installed plugin smoke checks passed.")

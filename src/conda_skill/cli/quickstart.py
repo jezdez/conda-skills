@@ -11,9 +11,9 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from ..links import BACKENDS, destination
-from ..skills import _validate_metadata
+from ..skills import _validate_metadata, discover
 from .init import execute as init
-from .install import execute as install
+from .link import execute as link
 from .output import escape_terminal_controls
 
 if TYPE_CHECKING:
@@ -46,22 +46,22 @@ class SkillSelection:
         return targets
 
 
-def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> None:
+def execute(source_prefix: Callable[[], Path], *, global_scope: bool) -> None:
     """Guide terminal users through review and confirmation before writes."""
     if context.json:
         raise ValueError(
-            "quickstart does not support JSON; use init, list, or install instead"
+            "quickstart does not support JSON. Use init, list, or link instead."
         )
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise ValueError(
-            "quickstart requires an interactive terminal on stdin and stdout; "
-            "use conda skill init, list, or install instead"
+            "quickstart requires an interactive terminal on stdin and stdout. "
+            "use conda skill init, list, or link instead"
         )
     console = Console(markup=False, highlight=False)
     console.print("Skill quickstart", style="bold green")
     console.print(
         "Create starter files or link installed skills.\n"
-        "No AI; this guide does not install packages or create environments."
+        "No AI is used. This guide does not install packages or create environments."
     )
     console.print()
     try:
@@ -78,10 +78,14 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         console.print()
         if action == "link":
             console.print("Installed skills", style="bold")
-            skills = load_skills()
+            prefix = source_prefix()
+            console.print(f"Source environment: {escape_terminal_controls(prefix)}")
+            skills = discover(prefix)
             if not skills:
                 console.print(
-                    "No package-owned skills found. Use conda skill init to author one."
+                    "No package-owned skills found in this environment.\n"
+                    "Check the source with -n NAME or -p PATH. "
+                    "Install a skill package with conda before linking it."
                 )
                 return
             for index, skill in enumerate(skills, 1):
@@ -137,10 +141,16 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
         console.print()
         console.print("Destination", style="bold")
         console.print(
+            f"project = current directory: {escape_terminal_controls(Path.cwd())}"
+        )
+        console.print(
             "Home-directory changes require starting quickstart with --global."
         )
         scope = Prompt.ask(
-            "Scope", choices=["project", "home"], default="project", console=console
+            "Scope",
+            choices=["project", "home"],
+            default="home" if global_scope else "project",
+            console=console,
         )
         root = Path.home() if scope == "home" else Path.cwd()
         if not global_scope and (
@@ -170,7 +180,7 @@ def execute(load_skills: Callable[[], list[Skill]], *, global_scope: bool) -> No
     elif isinstance(selection, SkillSelection):
         console.print()
         for skill in selection.skills:
-            install(skill, root, selection.backend)
+            link(skill, root, selection.backend)
     else:
         console.print()
         init(*selection, root)

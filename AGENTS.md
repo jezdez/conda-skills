@@ -9,7 +9,7 @@
   per-command parser configuration. Neither loads execution or rendering modules.
 - `cli/main.py` owns dispatch, source environment and skill selection,
   destination scope, and conda error handling. `cli/list.py`, `cli/status.py`,
-  `cli/install.py`, `cli/remove.py`, `cli/init.py`, and `cli/quickstart.py` own
+  `cli/link.py`, `cli/unlink.py`, `cli/init.py`, and `cli/quickstart.py` own
   command execution and output.
   `cli/output.py` shares terminal escaping and table rendering.
 - `skills.py` owns the frozen installed `Skill` model, shared metadata validation,
@@ -17,11 +17,12 @@
   `Skill.create_skeleton()` generates authoring files and returns their path.
   It does not construct an installed skill. Quickstart keeps pending authoring
   inputs separate from its frozen `SkillSelection` for an installed skill.
-- `links.py` owns backend destinations, link installation and removal, and
+- `links.py` owns backend destinations, linking and unlinking, and
   filesystem status. Status includes unmanaged and broken entries. It must not
   require a valid source environment or claim package ownership.
 - Tests mirror these topics: `test_plugin.py`, `test_skills.py`, `test_links.py`,
-  and command modules under `tests/cli/`. Cross-command integration tests live in
+  and command modules under `tests/cli/`, including `test_link.py` and
+  `test_unlink.py`. Cross-command integration tests live in
   `tests/cli/test_dispatch.py`. Shared fixtures belong in `tests/conftest.py`
   or `tests/cli/conftest.py` according to scope.
 
@@ -30,7 +31,7 @@
 - Use relative imports inside the package. Absolute `conda_skill.*` imports
   belong in tests and installed entry points.
 - Imports belong at module scope. Reserve lazy imports for the plugin callbacks
-  that protect conda startup, or a demonstrated optional-dependency boundary.
+  that protect conda startup, or an optional dependency whose absence is supported.
   Use `TYPE_CHECKING` for annotation-only imports.
 - Rich is a required dependency. Import its output classes at module scope in
   CLI modules. Do not use optional imports, fallbacks, or imports inside rendering.
@@ -77,8 +78,9 @@
   error handling. Do not introduce a separate environment resolver or config
   system. Missing-environment lookup must not create directories.
 - Environment selection uses `-n`/`--name` or `-p`/`--prefix` on `list`,
-  `install`, and `remove`. Destination scope is independent: project root by
-  default, home with `--global`.
+  `link`, and quickstart's installed-skill branch. The default is conda's active
+  target environment. `unlink` takes no source-environment flags. Destination
+  scope is independent: current directory by default, home with `--global`.
 - Home-directory mutations require explicit `--global`. Preserve the existing
   backend paths for `agents` and `claude`.
 - Prefer the cross-client `.agents/skills/` convention over adding agent-specific
@@ -95,8 +97,13 @@
 - Discover only headers recorded in conda packages. Validate names, frontmatter,
   duplicate ownership, and filesystem containment. Never execute skill content
   or imply that package ownership establishes trustworthiness.
-- Installation reuses a matching link and refuses other destinations.
-  Removal only unlinks a matching destination and never deletes package files.
+- Linking reuses a matching link and refuses other destinations.
+- Unlinking derives the source from the destination symlink target and validates
+  that it matches a recorded conda skill. Do not scan the environment registry or
+  claim the plugin created the link. An absent destination returns false without
+  source lookup. Broken or unverifiable targets require status inspection and
+  explicit `--force`, which removes only a symlink, never a file or directory,
+  and never bypasses redirected-parent checks. Never delete package files.
 - Preserve redirected-directory and escaping-symlink checks. Keep relative links
   where possible and absolute targets across Windows drives. Do not silently
   fall back to copies when symlink creation fails.
@@ -112,7 +119,7 @@
 - The interactive `quickstart` command rejects JSON mode before prompting and
   directs non-interactive users to explicit commands.
 - Preserve the result shapes: arrays for `list` and `status`, `name` and `path`
-  for `install`, and `name` and boolean `removed` for `remove`.
+  for `link`, and `name` and boolean `removed` for `unlink`.
 - Translate validation and filesystem errors through conda's normal error
   handling. Do not mix confirmations or table output into JSON responses.
 

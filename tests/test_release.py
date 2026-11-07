@@ -16,7 +16,7 @@ from conda.common.serialize import yaml
 
 
 def test_conda_publisher_receives_required_environment_secret() -> None:
-    """Pass the environment secret explicitly across the reusable workflow boundary."""
+    """Pass the environment secret explicitly to the reusable publisher."""
     workflows = Path(__file__).parents[1] / ".github/workflows"
     release = yaml.loads((workflows / "release.yml").read_text(encoding="utf-8"))
     publisher = yaml.loads(
@@ -194,7 +194,7 @@ def test_release_requires_dated_notes(release_tree: Path, monkeypatch) -> None:
 def test_release_metadata_matches(release_tree: Path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
     runpy.run_path(str(release_tree), run_name="__main__")
-    assert "nothing was published" in capsys.readouterr().out
+    assert "Nothing was published." in capsys.readouterr().out
 
 
 def test_release_recipe_version_must_match(release_tree: Path, monkeypatch) -> None:

@@ -31,7 +31,7 @@ def main() -> None:
     )
     if len(wheels) != 1:
         raise SystemExit(
-            "Expected exactly one conda-skills wheel in dist; "
+            "Expected exactly one conda-skills wheel in dist. "
             "build a wheel if missing, or remove extra wheels."
         )
     with tempfile.TemporaryDirectory() as temporary:

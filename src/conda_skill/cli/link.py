@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from conda.base.context import context
 from rich.console import Console
 
-from ..links import remove
+from ..links import link
 from .output import escape_terminal_controls
 
 if TYPE_CHECKING:
@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 
 
 def execute(skill: Skill, root: Path, backend: str) -> None:
-    """Remove a matching skill link and report the result."""
-    removed = remove(skill, root, backend)
+    """Link the selected skill and print its name and destination."""
+    path = link(skill, root, backend)
     if context.json:
-        print(json.dumps({"name": skill.name, "removed": removed}, ensure_ascii=True))
+        print(json.dumps({"name": skill.name, "path": str(path)}, ensure_ascii=True))
     else:
-        message = "Removed link for" if removed else "No link to remove for"
         Console(markup=False, highlight=False).print(
-            f"{message} {escape_terminal_controls(skill.name)}."
+            f"Linked {escape_terminal_controls(skill.name)} at "
+            f"{escape_terminal_controls(path)}"
         )

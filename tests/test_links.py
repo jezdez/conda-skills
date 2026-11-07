@@ -1,35 +1,70 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import json
+import shutil
 from pathlib import Path
 
 import pytest
 
-from conda_skill.links import install, remove, status
-from conda_skill.skills import Skill
+import conda_skill.links as links
+from conda_skill.links import link, status, unlink
+from conda_skill.skills import Skill, discover
 
 
 @pytest.fixture
-def skill(tmp_path: Path) -> Skill:
-    path = tmp_path / "source/example"
-    (path / "references").mkdir(parents=True)
-    (path / "SKILL.md").write_text("# Example\n", encoding="utf-8")
-    (path / "references/example.md").write_text("# Reference\n", encoding="utf-8")
+def skill(prefix: Path) -> Skill:
+    path = prefix / "share/agent-skills/example"
     return Skill("example", "Example guidance", path, "agent-skill-example", "1.0")
 
 
 def test_link_roundtrip(skill: Skill, tmp_path: Path) -> None:
     root = tmp_path / "project"
     root.mkdir()
-    target = install(skill, root, "agents")
+    target = link(skill, root, "agents")
     assert target.is_symlink()
     assert not Path(target.readlink()).is_absolute()
     assert (target / "references/example.md").read_text() == "# Reference\n"
-    assert install(skill, root, "agents") == target
+    assert link(skill, root, "agents") == target
     assert status(root, "agents")[0]["state"] == "linked"
-    assert remove(skill, root, "agents")
-    assert not remove(skill, root, "agents")
+    original = {
+        path: path.read_bytes() for path in skill.path.rglob("*") if path.is_file()
+    }
+    assert unlink(skill.name, root, "agents")
+    assert not unlink(skill.name, root, "agents")
+    assert all(path.read_bytes() == content for path, content in original.items())
     assert skill.path.is_dir()
+
+
+@pytest.mark.parametrize("component", ["example", "agent-skills"])
+def test_unlink_verifies_internal_source_alias(
+    prefix: Path, tmp_path: Path, component: str
+) -> None:
+    recorded = prefix / "share/agent-skills"
+    if component == "example":
+        recorded /= "example"
+    relocated = prefix / "skill-data"
+    recorded.rename(relocated)
+    recorded.symlink_to(relocated, target_is_directory=True)
+    [skill] = discover(prefix)
+    target = link(skill, tmp_path, "agents")
+    assert target.is_dir()
+    assert unlink(skill.name, tmp_path, "agents")
+    assert not target.is_symlink()
+    assert relocated.is_dir()
+
+
+def test_unlink_preserves_parent_traversal_after_source_alias(
+    prefix: Path, tmp_path: Path
+) -> None:
+    (prefix / "subdir").mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(prefix / "subdir", target_is_directory=True)
+    target = tmp_path / ".agents/skills/example"
+    target.parent.mkdir(parents=True)
+    target.symlink_to(alias / "../share/agent-skills/example", target_is_directory=True)
+    assert target.resolve() == prefix / "share/agent-skills/example"
+    assert unlink("example", tmp_path, "agents")
+    assert (prefix / "share/agent-skills/example/SKILL.md").is_file()
 
 
 @pytest.mark.parametrize("kind", ["directory", "file", "foreign", "broken", "cycle"])
@@ -47,19 +82,29 @@ def test_conflicts_are_preserved(skill: Skill, tmp_path: Path, kind: str) -> Non
         if kind == "foreign":
             foreign.mkdir()
         target.symlink_to(foreign, target_is_directory=True)
-    for operation in (install, remove):
-        with pytest.raises(ValueError, match="Refusing"):
-            operation(skill, tmp_path, "agents")
+    with pytest.raises(ValueError, match="Refusing"):
+        link(skill, tmp_path, "agents")
+    with pytest.raises(ValueError, match="Refusing"):
+        unlink(skill.name, tmp_path, "agents")
     assert target.exists() or target.is_symlink()
+    if kind in {"directory", "file"}:
+        with pytest.raises(ValueError, match="Refusing"):
+            unlink(skill.name, tmp_path, "agents", force=True)
+        assert target.exists()
+    else:
+        assert unlink(skill.name, tmp_path, "agents", force=True)
+        assert not target.is_symlink()
+        if kind == "foreign":
+            assert foreign.is_dir()
 
 
 @pytest.mark.parametrize("redirect", [".agents", ".agents/skills"])
-@pytest.mark.parametrize("operation", [install, remove], ids=["install", "remove"])
+@pytest.mark.parametrize("operation", ["link", "unlink", "force-unlink"])
 def test_redirected_destination_is_rejected(
     skill: Skill,
     tmp_path: Path,
     redirect: str,
-    operation: Callable[[Skill, Path, str], Path | bool],
+    operation: str,
 ) -> None:
     project = tmp_path / "project"
     project.mkdir()
@@ -69,19 +114,116 @@ def test_redirected_destination_is_rejected(
     redirected.parent.mkdir(parents=True, exist_ok=True)
     redirected.symlink_to(outside, target_is_directory=True)
     target = (outside / "skills" if redirect == ".agents" else outside) / skill.name
-    if operation is remove:
+    if operation != "link":
         target.parent.mkdir(parents=True, exist_ok=True)
         target.symlink_to(skill.path, target_is_directory=True)
         original_target = target.readlink()
     with pytest.raises(ValueError, match="Refusing redirected client directory"):
-        operation(skill, project, "agents")
+        if operation == "link":
+            link(skill, project, "agents")
+        else:
+            unlink(skill.name, project, "agents", force=operation == "force-unlink")
     assert redirected.is_symlink()
-    if operation is remove:
+    if operation != "link":
         assert target.is_symlink()
         assert target.readlink() == original_target
-        assert (target / "SKILL.md").read_text() == "# Example\n"
+        assert (target / "SKILL.md").read_text() == (
+            skill.path / "SKILL.md"
+        ).read_text()
     else:
         assert list(outside.iterdir()) == []
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize(
+    "name",
+    ["../example", "a/b", r"a\b", "/example", "", ".", "..", "con", "A", "a" * 65],
+)
+def test_unlink_rejects_unsafe_names(tmp_path: Path, name: str, force: bool) -> None:
+    with pytest.raises(ValueError, match="Invalid skill directory name"):
+        unlink(name, tmp_path, "agents", force=force)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "removed-env",
+        "missing-record",
+        "duplicate-owner",
+        "invalid-header",
+        "invalid-record",
+        "wrong-name",
+        "escaping-file",
+    ],
+)
+def test_unlink_requires_verified_package_target(
+    prefix: Path, skill: Skill, tmp_path: Path, failure: str
+) -> None:
+    target = link(skill, tmp_path, "agents")
+    record = prefix / "conda-meta/agent-skill-example-1.0-0.json"
+    if failure == "removed-env":
+        shutil.rmtree(prefix)
+    elif failure == "missing-record":
+        record.unlink()
+    elif failure == "duplicate-owner":
+        data = json.loads(record.read_text())
+        data["name"] = "other-package"
+        (record.parent / "other-package-1.0-0.json").write_text(json.dumps(data))
+    elif failure == "invalid-header":
+        (skill.path / "SKILL.md").write_text("not frontmatter")
+    elif failure == "invalid-record":
+        record.write_text("invalid json")
+    elif failure == "wrong-name":
+        target.rename(target.with_name("other"))
+        target = target.with_name("other")
+    else:
+        (skill.path / "escape").symlink_to(tmp_path, target_is_directory=True)
+    original = target.readlink()
+    with pytest.raises(ValueError, match="--force") as error:
+        unlink(target.name, tmp_path, "agents")
+    assert "status" in str(error.value)
+    assert target.readlink() == original
+    assert unlink(target.name, tmp_path, "agents", force=True)
+    assert not target.is_symlink()
+    if failure != "removed-env":
+        assert skill.path.is_dir()
+
+
+def test_unlink_absent_does_not_create_destination(tmp_path: Path) -> None:
+    assert not unlink("example", tmp_path, "agents")
+    assert not (tmp_path / ".agents").exists()
+
+
+@pytest.mark.parametrize("replacement", ["symlink", "file", "redirected-parent"])
+def test_unlink_refuses_destination_changed_during_verification(
+    skill: Skill, tmp_path: Path, monkeypatch, replacement: str
+) -> None:
+    target = link(skill, tmp_path, "agents")
+
+    def discover_then_replace(prefix: Path) -> list[Skill]:
+        skills = discover(prefix)
+        if replacement == "redirected-parent":
+            directory = target.parent
+            moved = tmp_path / "moved-skills"
+            directory.rename(moved)
+            directory.symlink_to(moved, target_is_directory=True)
+        else:
+            target.rename(target.with_name("original"))
+            if replacement == "symlink":
+                target.symlink_to(skill.path, target_is_directory=True)
+            else:
+                target.write_text("keep", encoding="utf-8")
+        return skills
+
+    monkeypatch.setattr(links, "discover", discover_then_replace)
+    with pytest.raises(ValueError, match="Refusing"):
+        unlink(skill.name, tmp_path, "agents")
+    if replacement == "file":
+        assert target.read_text() == "keep"
+    else:
+        assert target.is_symlink()
+    assert (skill.path / "SKILL.md").is_file()
 
 
 @pytest.mark.parametrize("kind", ["missing", "directory", "file"])

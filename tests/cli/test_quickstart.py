@@ -199,7 +199,7 @@ def test_quickstart_noninteractive_fails_cleanly(run_cli, tmp_path: Path) -> Non
     result = run_cli("quickstart")
     assert result.returncode != 0
     assert "interactive terminal" in result.stderr
-    assert "init" in result.stderr and "install" in result.stderr
+    assert "init" in result.stderr and "link" in result.stderr
     assert not (tmp_path / ".agents").exists()
 
 
@@ -293,6 +293,31 @@ def test_quickstart_explicit_home_link(
         assert (tmp_path / "home/.agents/skills" / name).is_symlink()
 
 
+@pytest.mark.parametrize("global_scope", [False, True])
+@pytest.mark.parametrize("action", ["link", "new"])
+def test_quickstart_scope_default_matches_global_flag(
+    interactive, prefix: Path, tmp_path: Path, global_scope: bool, action: str
+) -> None:
+    answers = ["link", "1", ""] if action == "link" else ["new", "notes", "Useful"]
+    output = interactive(
+        [*answers, "", "y"], "-p", str(prefix), *(["--global"] if global_scope else [])
+    )
+    root = tmp_path / "home" if global_scope else tmp_path
+    other = tmp_path if global_scope else tmp_path / "home"
+    relative = ".agents/skills/example" if action == "link" else "notes/SKILL.md"
+    assert (root / relative).exists()
+    assert not (other / relative).exists()
+    assert f"project = current directory: {tmp_path}" in output.replace("\n", "")
+
+
+def test_quickstart_global_allows_explicit_project_choice(
+    interactive, prefix: Path, tmp_path: Path
+) -> None:
+    interactive(["link", "1", "", "project", "y"], "-p", str(prefix), "--global")
+    assert (tmp_path / ".agents/skills/example").is_symlink()
+    assert not (tmp_path / "home/.agents").exists()
+
+
 def test_quickstart_refuses_project_at_home(
     interactive, prefix: Path, tmp_path: Path, monkeypatch
 ) -> None:
@@ -311,6 +336,10 @@ def test_quickstart_empty_environment_makes_no_changes(
     before = set(tmp_path.iterdir())
     output = interactive(["link"], "-p", str(prefix))
     assert "No package-owned skills found" in output
+    assert str(prefix) in output.replace("\n", "")
+    assert "-n NAME or -p PATH" in output
+    assert "Install a skill package" in output
+    assert "init to author" not in output
     assert set(tmp_path.iterdir()) == before
 
 
