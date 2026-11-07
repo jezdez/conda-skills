@@ -110,6 +110,10 @@ The first release published to PyPI, but the conda upload stopped before sending
 
 The workflow runs from `main`, so an administrator must temporarily permit that branch in the `anaconda` environment while retaining reviewer approval. Remove that branch exception after recovery. Do not adapt this workflow to another version by relaxing its digest or identity checks, and do not rerun it after a successful conda upload: it deliberately refuses existing channel releases.
 
+Recovery completed on November 7, 2026. Run `42322660191` uploaded the original package but failed in its post-upload verification step before the polling loop. Separate checks verified the publication signature and build provenance, the downloaded package bytes, Anaconda.org distribution metadata, channel repodata, and a fresh channel installation with the plugin smoke test. All matched the original artifact digest `9e4329d8ef48c9ad79f1b852923d2dcdedaacb5d8686cbc10aff789c242f529d`. The unchanged draft was then finalized as an immutable release and the temporary `main` deployment exception was removed.
+
+The recovery run remains failed in GitHub Actions. Its post-upload failure has not been reproduced locally or diagnosed conclusively. Investigate that step before the next release rather than assuming a successful publication means the automation is fixed. Do not rerun the 0.1.0 recovery now that both indexes contain the release.
+
 Pushing a tag is a publication action and requires explicit authorization. Workflow files alone do not configure the external publishers, and passing local preparation checks does not authorize uploads or release announcements.
 
 Once publication has been authorized and confirmed at the selected destinations, confirm the actual version and date in `CHANGELOG.md`, retain an Unreleased section for later work, and update installation links to the verified locations. Keep validation evidence separate from evidence of publication.
