@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 project = html_title = "conda-skills"
-extensions = ["myst_parser", "sphinx_design"]
+extensions = ["myst_parser", "sphinx_design", "sphinxcontrib.mermaid"]
+mermaid_version = "11.12.1"
 myst_enable_extensions = ["colon_fence"]
 html_theme = "conda_sphinx_theme"
 html_theme_options = {

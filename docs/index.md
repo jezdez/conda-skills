@@ -1,12 +1,14 @@
 # conda-skills
 
+Know conda but new to AI agents? Read {doc}`explanation/skills-for-conda-users` for a one-page overview of the terminology, files, and workflow.
+
 ## What is a skill?
 
 A skill is a set of instructions for an AI coding agent. It usually lives in a text file called `SKILL.md`, sometimes with examples, reference material, or scripts alongside it. A skill might explain how to work with a particular library or carry out a code review.
 
 The open [Agent Skills specification](https://agentskills.io/specification) defines the format: a directory with `SKILL.md`, metadata, and instructions.
 
-Your agent reads those instructions to help with a task. Installing a skill does not change the agent's model or install the library it describes unless the package declares that dependency.
+Your agent reads those instructions to help with a task. Installing a skill package does not change the agent's model or install the library it describes unless the package declares that dependency.
 
 Conda-skills lets you get skills through conda packages and make them available to your agent. You choose which instructions to use in each project.
 
@@ -26,7 +28,7 @@ See {doc}`explanation/common-questions` for how this compares with copying files
 
 The {doc}`tutorials/skill-forge` tutorial walks through one example: instructions for working with the Polars data library. You will:
 
-1. Install the skill package in a separate conda environment.
+1. Create and activate a new conda environment containing the skill package.
 2. Read its instructions and decide whether to use them.
 3. Make it available to a project, then remove it again.
 
@@ -46,9 +48,9 @@ Read a skill before using it. Conda-skills checks the package layout, but you de
 | Command | What it does |
 |---|---|
 | `conda install` or `conda create` | Downloads a package into a conda environment. |
-| `conda skill install` | Creates a directory link so your agent can find an installed skill. |
+| `conda skill link` | Creates a directory link so your agent can find an installed skill. |
 
-The link points to the installed files instead of making another copy. `conda skill remove` removes that link and leaves the package alone. Conda-skills does not launch your agent or change its configuration. The tutorial explains how to choose its skill directory.
+The link points to the installed files instead of making another copy. `conda skill unlink` removes that link and leaves the package alone. Conda-skills does not launch your agent or change its configuration. The tutorial explains how to choose its skill directory.
 
 ## Watch first, if you prefer
 
@@ -86,6 +88,7 @@ For ongoing use, see {doc}`how-to/update-skills`, {doc}`reference/commands`, or 
 :hidden:
 :caption: Start here
 
+explanation/skills-for-conda-users
 how-to/installation
 tutorials/skill-forge
 demos

@@ -2735,6 +2735,8 @@ environments:
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-jsmath-2.0.0-pyh5ded981_0.conda
         - conda: 
+            https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-mermaid-2.1.1-pyh5ded981_1.conda
+        - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-qthelp-2.0.0-pyhd8ed1ab_1.conda
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-serializinghtml-2.0.0-pyhd8ed1ab_0.conda
@@ -3008,6 +3010,8 @@ environments:
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-jsmath-2.0.0-pyh5ded981_0.conda
         - conda: 
+            https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-mermaid-2.1.1-pyh5ded981_1.conda
+        - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-qthelp-2.0.0-pyhd8ed1ab_1.conda
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-serializinghtml-2.0.0-pyhd8ed1ab_0.conda
@@ -3272,6 +3276,8 @@ environments:
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-htmlhelp-2.1.0-pyhd8ed1ab_1.conda
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-jsmath-2.0.0-pyh5ded981_0.conda
+        - conda: 
+            https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-mermaid-2.1.1-pyh5ded981_1.conda
         - conda: 
             https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-qthelp-2.0.0-pyhd8ed1ab_1.conda
         - conda: 
@@ -8576,6 +8582,19 @@ packages:
       - python
     conda: 
       https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-jsmath-2.0.0-pyh5ded981_0.conda
+  - build_number: 1
+    sha256: ff1ab95f8221fc6a9a550c0891cdccc4239f1515b347824320cb18aec5a8dc5e
+    md5: e0f40dce19f248bd466e2251bf1c7803
+    license: BSD-2-Clause
+    license_family: BSD
+    size: 23782
+    depends:
+      - python >=3.11
+      - pyyaml
+      - sphinx
+      - python
+    conda: 
+      https://conda.anaconda.org/conda-forge/noarch/sphinxcontrib-mermaid-2.1.1-pyh5ded981_1.conda
   - build_number: 1
     sha256: c664fefae4acdb5fae973bdde25836faf451f41d04342b64a358f9a7753c92ca
     md5: 00534ebcc0375929b45c3039b5ba7636
