@@ -13,6 +13,32 @@ defaults:
     shell: bash -el {0}
 
 jobs:
+  workflow-security:
+    name: Workflow security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Audit workflows and report to code scanning
+        id: zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          version: "1.32.0"
+          inputs: .github/workflows
+          min-severity: medium
+          advanced-security: true
+          online-audits: true
+      - name: Fail on medium-or-higher findings
+        env:
+          SARIF_FILE: ${{ steps.zizmor.outputs.output-file }}
+        run: |
+          # SARIF reporting alone does not fail the action on findings.
+          jq -e '(.runs | length) > 0 and all(.runs[]; (.results // [] | length) == 0)' "$SARIF_FILE"
+
   tests:
     name: ${{ matrix.os }} / ${{ matrix.environment }}
     runs-on: ${{ matrix.os }}
@@ -33,7 +59,7 @@ jobs:
           auto-activate: true
       - run: conda install -n base --yes --override-channels -c conda-forge 'conda>=26.9' 'conda-workspaces>=0.12'
       - run: conda workspace install --locked -e ${{ matrix.environment }}
-      - run: conda task run -e ${{ matrix.environment }} check
+      - run: conda task run -e ${{ matrix.environment }} check-code
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

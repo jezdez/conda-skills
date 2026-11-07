@@ -45,6 +45,8 @@ To install local commit hooks, run `conda task run -e default install-hooks`. Ru
 
 The local prek hook runs `check`, including type checking and workflow security, without a second set of tool installations. Run either check alone with `conda task run -e default type-check` or `conda task run -e default check-workflow-security`. Zizmor runs offline and fails on medium-or-higher findings. Lower-severity advice is not blocking, and offline mode does not audit remote action contents. The build environment's `check-workflows` task runs Actionlint for workflow and shell syntax.
 
+GitHub runs workflow security once in a dedicated job using the pinned official zizmor action, with online audits and SARIF results in the Security tab. An explicit check of that report fails the job on medium-or-higher findings. The Python/platform matrix runs `check-code` (tests, Ruff, formatting, and ty) rather than repeating the workflow scan. Local `check` and prek still include the offline security check.
+
 The `dev` feature also includes conda-workspaces so the hook can find `conda task` when launched from the workspace environment.
 
 ## Documentation changes
