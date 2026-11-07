@@ -22,7 +22,7 @@ def recovery() -> dict:
 
 
 def test_recovery_preserves_original_artifacts_and_publication_boundaries(recovery):
-    """Grant draft-read access while keeping upload and finalization dependent on checks."""
+    """Allow draft reads but require verification before upload and finalization."""
     assert recovery["on"] == {"workflow_dispatch": None}
     jobs = recovery["jobs"]
     assert set(jobs) == {"verify", "publish", "finalize"}
