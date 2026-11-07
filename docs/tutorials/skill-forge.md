@@ -44,11 +44,16 @@ Only continue if the instructions fit your project and your agent's permissions.
 
 ## 3. Connect it to the project
 
-After reviewing it, run from `project`. Choose the directory convention supported by your agent:
+After reviewing it, run from `project`. These tabs choose where to put the link, not which agent to install:
+
+- `.agents/skills/` is the shared, cross-client convention and the default here. "Agents" is a directory name, not a product. Use it if your coding agent documents support for this path.
+- `.claude/skills/` is the Claude-specific location. Choose it when setting up skills for Claude Code's directory convention.
+
+See the [Agent Skills Client Showcase](https://agentskills.io/clients) for supporting agents, then check your agent's documentation for its skill-directory paths. Supporting the file format does not automatically mean it scans `.agents/skills/`. The [integration guide](https://agentskills.io/integrate-skills#where-to-scan) explains the shared directory convention.
 
 ::::{tab-set}
 
-:::{tab-item} Agents directory
+:::{tab-item} Shared (.agents/skills/)
 :sync: backend-agents
 
 ```sh
@@ -60,7 +65,7 @@ You should see a link at `.agents/skills/polars` and a status row marked `linked
 
 :::
 
-:::{tab-item} Claude directory
+:::{tab-item} Claude (.claude/skills/)
 :sync: backend-claude
 
 ```sh
@@ -82,7 +87,7 @@ Use the same directory choice as above:
 
 ::::{tab-set}
 
-:::{tab-item} Agents directory
+:::{tab-item} Shared (.agents/skills/)
 :sync: backend-agents
 
 ```sh
@@ -93,7 +98,7 @@ conda skill list -p ../skills
 
 :::
 
-:::{tab-item} Claude directory
+:::{tab-item} Claude (.claude/skills/)
 :sync: backend-claude
 
 ```sh

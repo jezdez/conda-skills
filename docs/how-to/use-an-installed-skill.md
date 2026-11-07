@@ -14,11 +14,16 @@ Open the reported `SKILL.md` and any supporting files in your editor. Package ow
 
 ## Make it available to your project
 
-Run from the project root. Choose the directory convention your client supports:
+Run from the project root. The tabs select the link's destination directory:
+
+- `.agents/skills/` is the shared convention used by multiple clients, not an agent named "Agents". It is the default destination and requires your client to support that path.
+- `.claude/skills/` is the Claude-specific convention, selected with `--backend claude`.
+
+See the [Agent Skills Client Showcase](https://agentskills.io/clients) for supporting agents, then choose the path your agent documents. Format support does not guarantee that it scans `.agents/skills/`. The [integration guide](https://agentskills.io/integrate-skills#where-to-scan) explains that convention, and {doc}`../explanation/agent-discovery` describes how conda-skills uses it.
 
 ::::{tab-set}
 
-:::{tab-item} Agents
+:::{tab-item} Shared (.agents/skills/)
 :sync: backend-agents
 
 ```sh
@@ -30,7 +35,7 @@ This creates `.agents/skills/review-notes` as a directory symlink. It leaves the
 
 :::
 
-:::{tab-item} Claude
+:::{tab-item} Claude (.claude/skills/)
 :sync: backend-claude
 
 ```sh
@@ -58,7 +63,7 @@ Home changes require starting the guide with `--global`. Choosing home in a menu
 
 ::::{tab-set}
 
-:::{tab-item} Agents
+:::{tab-item} Shared (.agents/skills/)
 :sync: backend-agents
 
 ```sh
@@ -67,7 +72,7 @@ conda skill remove review-notes -n skill-env
 
 :::
 
-:::{tab-item} Claude
+:::{tab-item} Claude (.claude/skills/)
 :sync: backend-claude
 
 ```sh
