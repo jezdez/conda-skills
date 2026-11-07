@@ -52,7 +52,9 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          conda task run -e build check-release "$RELEASE_TAG"
+          set -euo pipefail
+          version="$(conda workspace run -e build -- python -m hatchling version)"
+          test "$version" = "$RELEASE_TAG"
       - run: conda task run -e py311 check
       - run: conda task run -e py314 check
       - run: conda task run -e docs docs

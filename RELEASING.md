@@ -8,7 +8,7 @@ Review the changes and their Unreleased entries in `CHANGELOG.md`. On a clean ta
 
 `pyproject.toml` declares a dynamic version and a `0.1.0` fallback for development builds without usable version metadata. The fallback does not establish a release, and an untagged Git checkout can still resolve to a different development version. Do not edit the generated `src/conda_skill/_version.py` file.
 
-The `build-conda` task resolves the version through Hatch and passes it as `CONDA_SKILLS_VERSION` to rattler-build. The recipe requires this value and has no default. Local builds copy the checkout without Git metadata, so the recipe supplies that resolved version to the Python build through `SETUPTOOLS_SCM_PRETEND_VERSION`. Release builds use the digest-verified published source archive without overriding its stored Python version. Do not use a version override to bypass release checks.
+The `build-conda` task runs `python -m hatchling version` and passes the result as `CONDA_SKILLS_VERSION` to rattler-build. The recipe requires this value and has no default. Local builds copy the checkout without Git metadata, so the recipe supplies that resolved version to the Python build through `SETUPTOOLS_SCM_PRETEND_VERSION`. Release builds use the digest-verified published source archive without overriding its stored Python version. Do not use a version override to bypass release checks.
 
 Check the candidate details in the README and installation guide. Keep development installation instructions until the corresponding channel or PyPI release is available. The example package under `docs/examples/` has its own version and is a tutorial fixture, not the plugin distribution.
 
@@ -31,14 +31,15 @@ conda task run -e build check-dist
 conda task run -e build test-wheel
 conda task run -e build build-conda
 conda task run -e build test-example
-conda task run -e build check-release 0.2.1
+conda workspace run -e build -- python -m hatchling version
 ```
 
-`check-release VERSION` compares the bare version argument with Hatchling's resolved package version. It also requires a dated changelog heading in the form `## VERSION - YYYY-MM-DD`. Use `0.2.1` for the current candidate, not `v0.2.1`.
+Review these release details manually:
 
-Run the final check on the clean release-tag checkout after tagging has been separately authorized. Before that, expect a development-version mismatch. The task does not create a tag, upload artifacts, or publish a release.
+- Once a release is authorized and its date selected, add a changelog heading in the form `## VERSION - YYYY-MM-DD` before tagging. Dated notes record the candidate without claiming publication. Workflows do not check the changelog.
+- On the clean release-tag checkout, confirm that the Hatch command prints the bare release version, such as `0.2.1`, not `v0.2.1`. Before tagging, expect a development version. Tagging requires separate authorization.
 
-The final check requires dated notes for the requested version. Once a release is authorized and its date selected, add those notes before tagging. They record the candidate without claiming publication.
+The workflows resolve the version with the same Hatch CLI command and compare it with the release tag using a shell test. The local commands above do not create a tag, upload artifacts, or publish a release.
 
 Review wheel and source distribution artifacts under `dist/` and conda artifacts under `conda-dist/`. `check-dist` validates Python distribution metadata, `test-wheel` checks the installed wheel, and `build-conda` builds and tests the conda recipe. None of these replaces the source test suite or the first-use tutorial workflow.
 
@@ -65,7 +66,7 @@ The publication destinations are the `jezdez` channel's `main` label on anaconda
 
 The process combines [conda-advise's release sequence](https://github.com/jezdez/conda-advise/blob/main/.github/workflows/release.yml) with [conda-sigstore's attestation steps](https://github.com/conda-incubator/conda-sigstore/blob/main/.github/workflows/conda.yml). Push an authorized annotated tag such as `0.1.0` on a commit reachable from `main`. Do not prefix the tag with `v` or use leading zeroes. Review native CI results before tagging. The release workflow reruns Python 3.11/3.14 tests and the strict docs build on Linux. It does not query historical CI runs or repeat the complete platform matrix.
 
-`release.yml` checks the tag, resolved Python version, and dated release notes. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata, and a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
+`release.yml` checks the tag and resolved Python version. It reruns tests and the strict docs build, then builds the wheel and source archive once. Twine checks distribution metadata, and a short shell check requires exactly the expected wheel and source filenames. The workflow tests the installed wheel and records the source archive digest with `sha256sum`. A separate job records GitHub build provenance for those artifacts before creating the draft release. PyPI publication uses OIDC and explicitly enables PEP 740 publication attestations.
 
 After PyPI succeeds, `release.yml` calls `publish-conda.yml` with the version and source digest. It sets `CONDA_SKILLS_SOURCE_SHA256` to select the published source in `recipe/recipe.yaml`. Rattler-build downloads the archive from the recipe's PyPI URL, verifies its SHA-256, and builds and tests the noarch package once. Local builds without this variable use the checkout. Signing, verification, and upload all use the same stored conda artifact. There is no independent tag-triggered publisher.
 

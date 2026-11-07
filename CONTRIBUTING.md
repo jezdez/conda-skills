@@ -14,7 +14,7 @@ conda task run -e default check
 
 The `check` task installs the editable plugin in the selected environment and runs pytest, Ruff lint, the formatting check, ty, and zizmor. The tests include real installed-plugin discovery and CLI subprocesses with temporary package records and isolated client homes.
 
-The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, prek, and zizmor belong to `dev`, while pytest and coverage belong to `test`. The `docs` and `build` environments contain their own tooling and shared runtime dependencies. Both test and build environments need Hatchling and hatch-vcs for editable installation and release-version tests.
+The `default`, `py311`, and `py314` environments combine the `dev` and `test` features. Ruff, ty, prek, and zizmor belong to `dev`, while pytest and coverage belong to `test`. The `docs` and `build` environments contain their own tooling and shared runtime dependencies. Both test and build environments need Hatchling and hatch-vcs for editable installation, and the build tasks use them to resolve package versions.
 
 To use the plugin with your usual conda executable, follow `docs/how-to/installation.md`. Those checkout instructions use `conda-pypi` with an explicit target environment, separate from the workspace's check and build environments. Validate installation examples in disposable environments, not a shared base environment.
 
@@ -76,6 +76,8 @@ conda task run -e build check-workflows
 ```
 
 Python distributions go to `dist/`, and conda artifacts go to `conda-dist/`. Check the built artifacts rather than relying only on editable-install tests. Follow `RELEASING.md` for version checks and release preparation. These commands do not publish packages.
+
+The `build-conda` task resolves `python -m hatchling version` and supplies `CONDA_SKILLS_VERSION` to the recipe, which has no default. Release workflows compare the Hatch version directly with the tag. Dated changelog notes are reviewed manually before tagging. Keep these commands in the task manifest and workflows rather than adding release helper scripts. The wheel, plugin smoke, and tutorial scripts remain because they test installed plugin behavior.
 
 ## Review
 

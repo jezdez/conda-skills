@@ -4,11 +4,10 @@ import gzip
 import hashlib
 import io
 import os
-import runpy
 import shutil
 import subprocess
-import sys
 import tarfile
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -213,120 +212,82 @@ def test_release_checks_gzip_before_recording_digest(
         assert not output.exists()
 
 
-@pytest.fixture(params=["static", "vcs"])
-def release_tree(tmp_path: Path, request, monkeypatch) -> Path:
-    """Create a release fixture independent of the checkout's unreleased notes."""
-    (tmp_path / "scripts").mkdir()
-    script = tmp_path / "scripts/check_release.py"
-    shutil.copyfile(Path(__file__).parents[1] / "scripts/check_release.py", script)
-    (tmp_path / "recipe").mkdir()
-    monkeypatch.delenv("SETUPTOOLS_SCM_PRETEND_VERSION", raising=False)
-    monkeypatch.delenv(
-        "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RELEASE_FIXTURE", raising=False
+@pytest.mark.parametrize("filename", ["release.yml", "publish-conda.yml"])
+def test_release_compares_hatch_version_directly(filename: str) -> None:
+    """Compare Hatch's resolved version with the release tag without a helper script."""
+    source = (Path(__file__).parents[1] / ".github/workflows" / filename).read_text(
+        encoding="utf-8"
     )
-    metadata = '[project]\nname = "release-fixture"\n'
-    if request.param == "vcs":
-        metadata += (
-            'dynamic = ["version"]\n'
-            '[tool.hatch.version]\nsource = "vcs"\n'
-            '[tool.hatch.version.raw-options]\nfallback_version = "0.1.0"\n'
-        )
-    else:
-        metadata += 'version = "0.1.0"\n'
-    (tmp_path / "pyproject.toml").write_text(metadata, encoding="utf-8")
-    (tmp_path / "recipe/recipe.yaml").write_text(
-        'context:\n  version: "0.1.0"\n', encoding="utf-8"
+    workflow = yaml.loads(source)
+    command = "conda workspace run -e build -- python -m hatchling version"
+    validation = next(
+        step["run"]
+        for step in workflow["jobs"]["build"]["steps"]
+        if command in step.get("run", "")
     )
-    (tmp_path / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## 0.1.0 - 2026-11-06\n\nInitial release.\n", encoding="utf-8"
+    assert "version=" in validation
+    assert 'test "$version" = "$RELEASE_TAG"' in validation
+    assert "check_release.py" not in source
+    assert "check-release" not in source
+    assert "CHANGELOG.md" not in validation
+
+
+def test_conda_build_task_resolves_required_version() -> None:
+    """Resolve Hatch metadata in each platform's task before invoking rattler-build."""
+    manifest = tomllib.loads(
+        (Path(__file__).parents[1] / "conda.toml").read_text(encoding="utf-8")
     )
-    return script
-
-
-@pytest.mark.parametrize("version", ["0.2.0", "v0.1.0"])
-def test_release_version_must_match(
-    release_tree: Path, monkeypatch, version: str
-) -> None:
-    monkeypatch.setattr(sys, "argv", [str(release_tree), version])
-    with pytest.raises(SystemExit) as error:
-        runpy.run_path(str(release_tree), run_name="__main__")
-    assert error.value.code == 2
-
-
-def test_release_requires_dated_notes(release_tree: Path, monkeypatch) -> None:
-    (release_tree.parents[1] / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## Unreleased\n", encoding="utf-8"
+    assert "check-release" not in manifest["tasks"]
+    command = manifest["tasks"]["build-conda"]["cmd"]
+    assert command.startswith("version=$(python -m hatchling version) && ")
+    build = (
+        "rattler-build build --recipe recipe/recipe.yaml "
+        "--output-dir conda-dist -c conda-forge"
     )
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
-    with pytest.raises(SystemExit) as error:
-        runpy.run_path(str(release_tree), run_name="__main__")
-    assert error.value.code == 2
-
-
-def test_release_metadata_matches(release_tree: Path, monkeypatch, capsys) -> None:
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
-    runpy.run_path(str(release_tree), run_name="__main__")
-    assert "Nothing was published." in capsys.readouterr().out
-
-
-def test_conda_build_uses_resolved_metadata(release_tree: Path, monkeypatch) -> None:
-    calls = []
-
-    def build(command, *, cwd, env, check):
-        calls.append(command)
-        assert cwd == release_tree.parents[1]
-        assert env["CONDA_SKILLS_VERSION"] == "0.1.0"
-        assert check is True
-
-    monkeypatch.setenv("CONDA_SKILLS_VERSION", "9.9.9")
-    monkeypatch.setattr(subprocess, "run", build)
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "--build-conda"])
-    runpy.run_path(str(release_tree), run_name="__main__")
-    assert calls == [
-        [
-            "rattler-build",
-            "build",
-            "--recipe",
-            "recipe/recipe.yaml",
-            "--output-dir",
-            "conda-dist",
-            "-c",
-            "conda-forge",
-        ]
-    ]
+    assert f'CONDA_SKILLS_VERSION="$version" {build}' in command
+    windows = manifest["target"]["win-64"]["tasks"]["build-conda"]["cmd"]
+    assert windows[0] == "powershell"
+    assert "-Command" in windows
+    assert "$version = python -m hatchling version" in windows[-1]
+    assert "$env:CONDA_SKILLS_VERSION = $version" in windows[-1]
+    assert build in windows[-1]
+    assert windows[-1].count("exit $LASTEXITCODE") == 2
 
 
 def test_recipe_requires_version_without_default() -> None:
+    """Require the build task to supply the recipe version explicitly."""
     recipe = yaml.loads(
         (Path(__file__).parents[1] / "recipe/recipe.yaml").read_text(encoding="utf-8")
     )
     assert recipe["context"]["version"] == '${{ env.get("CONDA_SKILLS_VERSION") }}'
 
 
-def test_release_check_requires_version(release_tree: Path, monkeypatch) -> None:
-    monkeypatch.setattr(sys, "argv", [str(release_tree)])
-    with pytest.raises(SystemExit) as error:
-        runpy.run_path(str(release_tree), run_name="__main__")
-    assert error.value.code == 2
-
-
-def test_release_package_version_must_match(release_tree: Path, monkeypatch) -> None:
-    project = release_tree.parents[1] / "pyproject.toml"
-    project.write_text(
-        project.read_text(encoding="utf-8").replace('"0.1.0"', '"0.2.0"'),
+@pytest.mark.parametrize("failure", [0, 7])
+def test_powershell_conda_build_propagates_failure(
+    tmp_path: Path, failure: int
+) -> None:
+    powershell = shutil.which("pwsh") or shutil.which("powershell")
+    if not powershell:
+        pytest.skip("PowerShell is unavailable")
+    manifest = tomllib.loads((Path(__file__).parents[1] / "conda.toml").read_text())
+    command = manifest["target"]["win-64"]["tasks"]["build-conda"]["cmd"][-1]
+    script = tmp_path / "build.ps1"
+    script.write_text(
+        "function python {\n"
+        "  $global:LASTEXITCODE = [int]$env:SIMULATED_STATUS\n"
+        "  '0.2.1'\n"
+        "}\n"
+        "function rattler-build {\n"
+        "  if ($env:CONDA_SKILLS_VERSION -ne '0.2.1') { exit 99 }\n"
+        "  $global:LASTEXITCODE = 0\n"
+        "}\n" + command,
         encoding="utf-8",
     )
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
-    with pytest.raises(SystemExit) as error:
-        runpy.run_path(str(release_tree), run_name="__main__")
-    assert error.value.code == 2
-
-
-def test_release_rejects_placeholder_date(release_tree: Path, monkeypatch) -> None:
-    (release_tree.parents[1] / "CHANGELOG.md").write_text(
-        "## 0.1.0 - YYYY-MM-DD\n", encoding="utf-8"
+    result = subprocess.run(
+        [powershell, "-NoProfile", "-File", str(script)],
+        env={**os.environ, "SIMULATED_STATUS": str(failure)},
+        capture_output=True,
+        text=True,
+        timeout=20,
     )
-    monkeypatch.setattr(sys, "argv", [str(release_tree), "0.1.0"])
-    with pytest.raises(SystemExit) as error:
-        runpy.run_path(str(release_tree), run_name="__main__")
-    assert error.value.code == 2
+    assert result.returncode == failure, result.stderr

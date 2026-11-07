@@ -4,8 +4,7 @@
 
 ## 0.2.1 - 2026-11-07
 
-- Resolve conda recipe versions from Hatch metadata without a separately maintained default.
-
+- Resolve conda recipe versions directly with the Hatch CLI without a separately maintained default. Replace the release-check script with workflow version comparisons and a manual dated-notes checklist.
 - Simplify conda publication to build and test, attest, then upload. Remove post-upload polling, repeated inspections, and fresh channel installations while retaining verified signatures, protected uploads, tag identity checks, and overwrite protection.
 - Correct the normalized PyPI source URL used for conda release builds.
 - Retry transient source-download failures with bounded curl retries and verify the archive against the recorded SHA-256 without querying PyPI metadata.

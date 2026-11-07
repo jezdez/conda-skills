@@ -217,11 +217,13 @@ conda task run -e build build
 - Build with Hatchling and hatch-vcs. Derive the Python version from Git and never
   edit the generated `src/conda_skill/_version.py`. The `0.1.0` fallback is for
   development without usable version metadata, not evidence of a release.
-- Resolve the conda build version through Hatch. The build task supplies
+- Resolve the conda build version with `python -m hatchling version` directly
+  in the build task. The task supplies
   `CONDA_SKILLS_VERSION`, which the recipe requires without a default. Its
   build-local `SETUPTOOLS_SCM_PRETEND_VERSION` supplies that resolved version when
-  building copied source without Git. Release checks compare the tag with the
-  resolved Python version. Do not override their version.
+  building copied source without Git. Release workflows use the Hatch CLI and
+  a shell comparison with the tag, not a custom release-check script. Dated
+  changelog notes are a manual pre-tag checklist item. Do not override the version.
   Follow `RELEASING.md`. Version checks do not authorize tagging or publishing.
 - Pull requests run native tests and artifact/docs checks. Stable annotated tags
   on main trigger coordinated PyPI and jezdez/main publication. Release conda
